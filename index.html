@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>법인사업부 영업활동 대시보드</title>
-<link href="https://fonts.googleapis.com/css2?family=Pretendard:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.min.css" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <style>
   :root {
@@ -803,6 +803,10 @@ const DEFAULT_SHEET_ID   = '13BHBgMAko9jNZoPIwOe5EqML8n56RCPl4gHhrIrMU0U';
 const DEFAULT_LOG_GID    = '785851831';
 const DEFAULT_ROSTER_GID = '310906424';
 const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxIYOlk1xXVCuGZAstkjSApzPSB4fo9RCGi0ABtBQ5GTSxkcdnkKPFd2dAzOHKIoN9d/exec';
+// 관리자 키: 이 대시보드 전용 공유 비밀값. Apps Script의 ADMIN_KEY와 반드시 같아야 함.
+// 정적 페이지 코드에 그대로 들어있어 "보기" 메뉴로 열어보면 노출되니, URL이 새지 않도록 주의.
+const ADMIN_KEY = '2K_ZcqwKfbaFB3YkmQzZOu3u';
+const ADMIN_QS  = 'admin=' + encodeURIComponent(ADMIN_KEY);
 
 // ── 주차 계산 ──
 function getWeekStr(dateStr) {
@@ -866,34 +870,10 @@ function getConfig() {
   return cfg;
 }
 
-// ── CSV 파서 ──
-function parseCSV(text) {
-  const rows = []; let row = [], cell = '', inQ = false;
-  for (let i = 0; i < text.length; i++) {
-    const c = text[i];
-    if (c === '"') { inQ = !inQ; continue; }
-    if (c === ',' && !inQ) { row.push(cell.trim()); cell = ''; continue; }
-    if ((c === '\n' || c === '\r') && !inQ) {
-      row.push(cell.trim()); rows.push(row); row = []; cell = '';
-      if (c === '\r' && text[i + 1] === '\n') i++;
-      continue;
-    }
-    cell += c;
-  }
-  if (cell || row.length) { row.push(cell.trim()); rows.push(row); }
-  return rows.filter(r => r.some(c => c));
-}
-
-async function fetchSheetCSV(gid) {
-  const cfg = getConfig();
-  if (!cfg.sheetId) return null;
-  const url = `https://docs.google.com/spreadsheets/d/${cfg.sheetId}/export?format=csv&gid=${gid || 0}&t=${Date.now()}`;
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(`시트 불러오기 실패: ${res.status}`);
-  return parseCSV(await res.text());
-}
-
 // ── 데이터 로드 ──
+// 명단·활동·근태 전부 Apps Script(SCRIPT_URL)를 통해서만 가져온다 (관리자 키 필요).
+// 예전엔 구글시트 CSV export를 직접 불러왔는데, 그 방식은 시트가 "링크 공유"로
+// 열려있으면 인증 없이 전체 데이터가 그대로 노출되는 문제가 있어서 제거함.
 async function loadData() {
   setLoading(true, '데이터 불러오는 중...');
   const cfg = getConfig();
@@ -904,20 +884,21 @@ async function loadData() {
     return;
   }
   try {
-    const rosterRows = await fetchSheetCSV(cfg.rosterGid);
+    // 서로 의존하지 않는 요청들을 동시에 시작해서 왕복 시간을 줄인다.
+    const [rosterRows, logJson] = await Promise.all([
+      fetch(SCRIPT_URL + '?action=getRoster&' + ADMIN_QS + '&t=' + Date.now()).then(r => r.json()).catch(() => []),
+      fetch(SCRIPT_URL + '?action=getActivityLog&' + ADMIN_QS + '&t=' + Date.now()).then(r => r.json()).catch(() => []),
+      fetchAttendance()
+    ]);
     let roster = [];
-    if (rosterRows && rosterRows.length > 1) {
-      roster = rosterRows.slice(1).map(r => ({
-        rm: r[0], org: r[1], name: r[2], role: r[3]
-      })).filter(r => r.name && r.role !== 'RM');
+    if (Array.isArray(rosterRows) && rosterRows.length) {
+      roster = rosterRows.filter(r => r.name && r.role !== 'RM');
       const seen = new Set();
       roster = roster.filter(m => { if (seen.has(m.name)) return false; seen.add(m.name); return true; });
     }
     rosterMap = {};
     roster.forEach(m => { rosterMap[m.name] = m; });
 
-    const logJson = await fetch(SCRIPT_URL + '?action=getActivityLog&t=' + Date.now())
-      .then(r => r.json()).catch(() => []);
     let activities = [];
     if (Array.isArray(logJson) && logJson.length > 0) {
       activities = logJson.map(r => ({
@@ -943,9 +924,8 @@ async function loadData() {
     weekSet.add(currentWeek);
     weeks = [...weekSet].sort().reverse();
 
-    allData = buildWeeklySummary(activities, roster, weeks, currentWeek);
+    allData = buildWeeklySummary(activities, roster, weeks);
 
-    await fetchAttendance();
     buildWeekSelect();
     populateAttNames();
     renderAll();
@@ -964,15 +944,15 @@ async function loadData() {
 }
 
 // ── 주간요약 계산 ──
-function buildWeeklySummary(activities, roster, weekList, currentWeek) {
+// 과거 주차도 현재 팀장 명단 전원을 대상으로 계산한다. 활동이 없으면 0점으로
+// 잡혀 미달자로 정상 집계된다 (예전엔 그 주에 활동이 1건도 없으면 아예 목록에서
+// 빠져서 달성률이 실제보다 좋게 나오는 버그가 있었음).
+function buildWeeklySummary(activities, roster, weekList) {
   const result = [];
+  const leaders = roster.filter(m => m.role === '팀장');
   weekList.forEach(week => {
     const weekActs = activities.filter(a => a.week === week);
-    const activePeople = new Set(weekActs.map(a => a.name));
-    const members = week === currentWeek
-      ? roster.filter(m => m.role === '팀장')
-      : roster.filter(m => m.role === '팀장' && activePeople.has(m.name));
-    members.forEach(member => {
+    leaders.forEach(member => {
       const acts = weekActs.filter(a => a.name === member.name);
       result.push({
         week, org: member.org, name: member.name, role: member.role,
@@ -1181,7 +1161,7 @@ function exportCSV(header, rows, filename) {
 function exportLogCSV() {
   if (!filteredLog.length) { alert('다운로드할 데이터가 없습니다.'); return; }
   const header = ['주차','날짜','소속','이름','단체구분','제도','단체명','활동목적','활동방식','내용','점수'];
-  const rows = filteredLog.map(r => [r.week, r.actDate, r.org, r.name, r.category, r.scheme, r.orgName, r.purpose, r.method, r.content, r.score]);
+  const rows = filteredLog.map(r => [weekStrToLabel(r.week), r.actDate, r.org, r.name, r.category, r.scheme, r.orgName, r.purpose, r.method, r.content, r.score]);
   exportCSV(header, rows, `활동일지_${new Date().toLocaleDateString('sv')}.csv`);
 }
 
@@ -1295,7 +1275,7 @@ function labelToWeekStr(label) {
 // ── 근태 API 조회 ──
 async function fetchAttendance() {
   try {
-    const res = await fetch(SCRIPT_URL + '?action=getAttendance&t=' + Date.now());
+    const res = await fetch(SCRIPT_URL + '?action=getAttendance&' + ADMIN_QS + '&t=' + Date.now());
     const rows = await res.json();
     attendance = {};
     rows.forEach(r => {
@@ -1602,6 +1582,13 @@ async function addAttendance() {
   const deduct = parseInt(deductStr);
   const date = document.getElementById('att-date').value;
   if (!name || !date) { alert('이름과 날짜를 모두 입력해주세요'); return; }
+
+  // 중복 등록 방지 (같은 이름+날짜+라벨). 최종 방어는 서버 handleAttendancePost에서 함
+  const dup = Object.entries(attendance).some(([k, items]) =>
+    k.startsWith(name + '_') && items.some(a => a.date === date && a.label === label)
+  );
+  if (dup) { alert(`이미 ${date}에 '${label}' 기록이 등록되어 있습니다.`); return; }
+
   const week = getCurrentWeek();
   // 즉시 UI 반영
   const key = name + '_' + week;
@@ -1612,7 +1599,7 @@ async function addAttendance() {
   fetch(SCRIPT_URL, {
     method: 'POST', mode: 'no-cors',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams({ action: 'addAttendance', name, week: weekStrToLabel(week), date, label, deduct: String(deduct) })
+    body: new URLSearchParams({ action: 'addAttendance', name, week: weekStrToLabel(week), date, label, deduct: String(deduct), admin: ADMIN_KEY })
   }).then(() => setTimeout(async () => { await fetchAttendance(); renderAll(); }, 1500))
     .catch(e => console.warn('근태 저장 실패:', e));
 }
@@ -1632,7 +1619,7 @@ async function removeAtt(key, idx) {
   fetch(SCRIPT_URL, {
     method: 'POST', mode: 'no-cors',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams({ action: 'removeAttendance', name: rName, week: rWeek, date: item.date, label: item.label })
+    body: new URLSearchParams({ action: 'removeAttendance', name: rName, week: rWeek, date: item.date, label: item.label, admin: ADMIN_KEY })
   }).then(() => setTimeout(async () => { await fetchAttendance(); renderAll(); }, 1500))
     .catch(e => console.warn('근태 삭제 실패:', e));
 }
