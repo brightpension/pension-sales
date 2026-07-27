@@ -390,7 +390,7 @@
   </div>
 
   <div style="margin-top:24px">
-    <div style="font-size:12px;font-weight:700;color:var(--gray);margin-bottom:8px">이번 주 근태 기록</div>
+    <div style="font-size:12px;font-weight:700;color:var(--gray);margin-bottom:8px">내 근태 기록 전체</div>
     <div id="att-records"></div>
   </div>
 </div>
@@ -441,14 +441,18 @@ document.getElementById('act-date').value = todayStr();
 document.getElementById('att-date').value = todayStr();
 
 function getWeekStr(dateStr) {
-  const d    = new Date(dateStr + 'T00:00:00');
-  const jan1 = new Date(d.getFullYear(), 0, 1);
-  const dow  = (jan1.getDay() + 6) % 7;
-  const dayN = Math.floor((d - jan1) / 86400000) + 1;
-  const wk   = Math.ceil((dayN + dow) / 7);
-  return String(d.getFullYear()).slice(2) + '-' + String(wk).padStart(2,'0');
+  const d = new Date(String(dateStr || '').slice(0,10) + 'T00:00:00');
+  if (isNaN(d.getTime())) return '';
+  // ISO 8601 기준: 그 날짜가 속한 주의 목요일로 연도/주차를 정한다 (weekStrToLabel과 동일한 기준으로 통일)
+  const dow = (d.getDay() + 6) % 7; // 월=0 ... 일=6
+  const thursday = new Date(d.getTime() + (3 - dow) * 86400000);
+  const isoYear = thursday.getFullYear();
+  const jan4 = new Date(isoYear, 0, 4);
+  const jan4dow = (jan4.getDay() + 6) % 7;
+  const week1Mon = new Date(jan4.getTime() - jan4dow * 86400000);
+  const wk = Math.round((thursday - week1Mon) / (7 * 86400000)) + 1;
+  return String(isoYear).slice(2) + '-' + String(wk).padStart(2, '0');
 }
-function currentWeekStr() { return getWeekStr(todayStr()); }
 // "26-27" → "26년 7월 1주차" (시트 저장 형식)
 function weekStrToLabel(wkStr) {
   const [yy, ww] = wkStr.split('-').map(Number);
@@ -547,6 +551,10 @@ document.getElementById('org-dropdown').addEventListener('mousedown', (e) => {
   const item = e.target.closest('[data-val]');
   if (item) selectOrg(item.dataset.val);
 });
+document.getElementById('att-records').addEventListener('click', (e) => {
+  const btn = e.target.closest('.btn-del-act[data-date]');
+  if (btn) deleteAtt(btn.dataset.date, btn.dataset.label, btn.dataset.week);
+});
 function selectOrg(val) {
   document.getElementById('org-name').value = val;
   document.getElementById('org-dropdown').style.display = 'none';
@@ -565,7 +573,7 @@ function onOrgKey(e) {
 }
 loadOrgNames();
 
-let lastPayload = null, editMode = false, editSubmitTime = null;
+let lastPayload = null, editMode = false, editSubmitTime = null, editRowId = null;
 
 // ── 전송 헬퍼 (실제 응답을 읽는다) ──
 // Apps Script는 e.postData.contents를 그냥 문자열로 파싱하므로 Content-Type이
@@ -662,6 +670,7 @@ async function submitForm() {
     type: editMode ? 'activity_update' : 'activity_v2',
     submitTime: newSubmitTime,
     originalSubmitTime: editMode ? editSubmitTime : null,
+    rowId: editMode ? editRowId : uuid(), // submitTime 문자열 대신 고유 ID로 행을 식별 (초 단위 충돌/재포맷 방지)
     actDate: dateStr, org: ORG, name: NAME, role: ROLE, key: KEY,
     purpose: selPurpose, method: selMethod,
     orgName: document.getElementById('org-name').value.trim(),
@@ -672,7 +681,7 @@ async function submitForm() {
   lastPayload = payload;
   const result = await postJSON(payload);
   if (result.ok) {
-    editMode = false; editSubmitTime = null;
+    editMode = false; editSubmitTime = null; editRowId = null;
     showSuccess();
     return;
   }
@@ -702,7 +711,7 @@ function showSuccess() {
 }
 
 function resetForm() {
-  editMode = false; editSubmitTime = null;
+  editMode = false; editSubmitTime = null; editRowId = null;
   document.getElementById('edit-banner').style.display = 'none';
   document.getElementById('submit-btn').innerHTML = '제출하기';
   document.getElementById('submit-hint').textContent = '1건씩 제출 · 제출 후 추가 입력 가능';
@@ -721,7 +730,7 @@ function resetForm() {
 function cancelEdit() { resetForm(); }
 
 function editActivity(data) {
-  editMode = true; editSubmitTime = data.submitTime;
+  editMode = true; editSubmitTime = data.submitTime; editRowId = data.rowId || null;
   document.getElementById('act-date').value = data.actDate || todayStr();
   selPurpose = null; selScore = 0; selIdx = -1;
   document.querySelectorAll('[data-purpose]').forEach(b => {
@@ -747,9 +756,9 @@ function editActivity(data) {
   window.scrollTo({top:0,behavior:'smooth'});
 }
 
-async function deleteActivity(submitTime) {
+async function deleteActivity(submitTime, rowId) {
   if (!confirm('이 활동 기록을 삭제하시겠습니까?')) return;
-  const result = await postJSON({ type:'activity_delete', submitTime, name:NAME, org:ORG, key:KEY });
+  const result = await postJSON({ type:'activity_delete', submitTime, rowId: rowId || '', name:NAME, org:ORG, key:KEY });
   if (result.ok) {
     cachedRows = null;
     loadRecords();
@@ -817,7 +826,7 @@ async function loadRecords() {
     const pbMap = {신규발굴:'pb0', 펀드상담:'pb1', 단체관리:'pb2'};
     const itemsHTML = [...myRows].reverse().map(r => {
       rowCache.set(r.submitTime, {
-        submitTime: r.submitTime, actDate: r.actDate, category: r.category,
+        submitTime: r.submitTime, rowId: r.rowId || '', actDate: r.actDate, category: r.category,
         orgName: r.orgName, scheme: r.scheme, purpose: r.purpose,
         method: r.method, content: r.content, score: r.score
       });
@@ -833,7 +842,7 @@ async function loadRecords() {
         ${extras?`<div class="act-detail">${extras}</div>`:''}
         <div class="act-actions">
           <button class="btn-edit" data-key="${encodeURIComponent(r.submitTime)}" onclick="editActivity(rowCache.get(decodeURIComponent(this.dataset.key)))">✏️ 수정</button>
-          <button class="btn-del-act" data-key="${encodeURIComponent(r.submitTime)}" onclick="deleteActivity(decodeURIComponent(this.dataset.key))">🗑️ 삭제</button>
+          <button class="btn-del-act" data-key="${encodeURIComponent(r.submitTime)}" data-row-id="${encodeURIComponent(r.rowId || '')}" onclick="deleteActivity(decodeURIComponent(this.dataset.key), decodeURIComponent(this.dataset.rowId))">🗑️ 삭제</button>
         </div>
       </div>`;
     }).join('') || `<div class="no-data"><div class="no-icon">📭</div>이 주에 기록된 활동이 없습니다</div>`;
@@ -957,25 +966,22 @@ async function loadAttRecords() {
   try {
     const res  = await fetch(SCRIPT_URL + '?action=getAttendance&name=' + encodeURIComponent(NAME) + '&key=' + encodeURIComponent(KEY) + '&t=' + Date.now());
     const rows = await res.json();
-    const weekInternal = currentWeekStr();          // "26-27"
-    const weekLabel    = weekStrToLabel(weekInternal); // "26년 7월 1주차"
-    // 신규(라벨 형식) & 구형("26-27") 모두 매칭
-    const mine = rows.filter(r => r.name === NAME && (r.week === weekLabel || r.week === weekInternal));
+    // 이번 주만 보여주면 다른 주에 등록한 걸 본인이 찾아서 못 지우므로, 전체를 최신순으로 보여준다.
+    const mine = Array.isArray(rows) ? [...rows].sort((a, b) => String(b.date).localeCompare(String(a.date))) : [];
     if (!mine.length) {
-      el.innerHTML = '<div class="no-data"><div class="no-icon">✅</div>이번 주 근태 기록 없음</div>';
+      el.innerHTML = '<div class="no-data"><div class="no-icon">✅</div>등록된 근태 기록이 없습니다</div>';
       return;
     }
     el.innerHTML = mine.map(r => {
       const isVac = Number(r.deduct) > 0;
       return `<div class="att-item">
         <div class="att-item-left">
-          <span class="att-item-date">📅 ${r.date}</span>
-          <span class="att-item-label ${isVac?'vac':'trip'}">${r.label}</span>
+          <span class="att-item-date">📅 ${esc(r.date)}</span>
+          <span class="att-item-label ${isVac?'vac':'trip'}">${esc(r.label)}</span>
         </div>
         <div style="display:flex;align-items:center;gap:10px">
           <span class="att-deduct ${isVac?'':'none'}">${isVac?`−${r.deduct}점`:'기록만'}</span>
-          <button class="btn-del-act" style="width:auto;padding:5px 10px"
-            onclick="deleteAtt('${r.date}','${r.label}','${r.week}')">삭제</button>
+          <button class="btn-del-act" style="width:auto;padding:5px 10px" data-date="${esc(r.date)}" data-label="${esc(r.label)}" data-week="${esc(r.week)}">삭제</button>
         </div>
       </div>`;
     }).join('');
