@@ -812,11 +812,16 @@ const ADMIN_QS  = 'admin=' + encodeURIComponent(ADMIN_KEY);
 function getWeekStr(dateStr) {
   const d = new Date(String(dateStr || '').slice(0,10) + 'T00:00:00');
   if (isNaN(d.getTime())) return '';
-  const jan1 = new Date(d.getFullYear(), 0, 1);
-  const dow  = (jan1.getDay() + 6) % 7;
-  const dayN = Math.floor((d - jan1) / 86400000) + 1;
-  const wk   = Math.ceil((dayN + dow) / 7);
-  return String(d.getFullYear()).slice(2) + '-' + String(wk).padStart(2, '0');
+  // ISO 8601 기준: 그 날짜가 속한 주의 목요일로 연도/주차를 정한다 (weekStrToLabel과 동일한 기준으로 통일 —
+  // 예전엔 1/1 기준 단순 계산이라 weekStrToLabel의 ISO 계산과 연말연초에 어긋났음)
+  const dow = (d.getDay() + 6) % 7; // 월=0 ... 일=6
+  const thursday = new Date(d.getTime() + (3 - dow) * 86400000);
+  const isoYear = thursday.getFullYear();
+  const jan4 = new Date(isoYear, 0, 4);
+  const jan4dow = (jan4.getDay() + 6) % 7;
+  const week1Mon = new Date(jan4.getTime() - jan4dow * 86400000);
+  const wk = Math.round((thursday - week1Mon) / (7 * 86400000)) + 1;
+  return String(isoYear).slice(2) + '-' + String(wk).padStart(2, '0');
 }
 function todayStr() { return new Date().toLocaleDateString('sv'); }
 
@@ -847,7 +852,7 @@ function loadConfig() {
   document.getElementById('cfg-sheet-id').value   = cfg.sheetId    || DEFAULT_SHEET_ID;
   document.getElementById('cfg-log-gid').value    = cfg.logGid     || DEFAULT_LOG_GID;
   document.getElementById('cfg-roster-gid').value = cfg.rosterGid  || DEFAULT_ROSTER_GID;
-  interviews = JSON.parse(localStorage.getItem('dashboard_interviews') || '{}');
+  // 면담여부는 기기별로 갈리면 안 되니 localStorage가 아니라 시트에서 불러온다 (loadData 참고)
 }
 
 function saveConfig() {
@@ -885,11 +890,14 @@ async function loadData() {
   }
   try {
     // 서로 의존하지 않는 요청들을 동시에 시작해서 왕복 시간을 줄인다.
-    const [rosterRows, logJson] = await Promise.all([
+    const [rosterRows, logJson, interviewRows] = await Promise.all([
       fetch(SCRIPT_URL + '?action=getRoster&' + ADMIN_QS + '&t=' + Date.now()).then(r => r.json()).catch(() => []),
       fetch(SCRIPT_URL + '?action=getActivityLog&' + ADMIN_QS + '&t=' + Date.now()).then(r => r.json()).catch(() => []),
+      fetch(SCRIPT_URL + '?action=getInterviews&' + ADMIN_QS + '&t=' + Date.now()).then(r => r.json()).catch(() => []),
       fetchAttendance()
     ]);
+    interviews = {};
+    if (Array.isArray(interviewRows)) interviewRows.forEach(r => { interviews[r.name + '_' + r.week] = true; });
     let roster = [];
     if (Array.isArray(rosterRows) && rosterRows.length) {
       roster = rosterRows.filter(r => r.name && r.role !== 'RM');
@@ -1354,7 +1362,7 @@ function renderChart(data) {
       },
       scales: {
         x: { ticks: { color: '#9b9b98', font: { size: 10, family: 'Pretendard' }, autoSkip: false, maxRotation: 45 }, grid: { display: false } },
-        y: { min: 0, max: 35, ticks: { color: '#9b9b98', font: { size: 11 }, stepSize: 5 }, grid: { color: 'rgba(0,0,0,0.05)' } }
+        y: { min: 0, suggestedMax: 25, ticks: { color: '#9b9b98', font: { size: 11 }, stepSize: 5 }, grid: { color: 'rgba(0,0,0,0.05)' } }
       }
     }
   });
@@ -1375,7 +1383,15 @@ function renderOrgByRM(data, containerId, useGrid) {
     if (!rmGroups[v.rm]) rmGroups[v.rm] = [];
     rmGroups[v.rm].push({ org, ...v });
   });
-  const rmOrder = ['1RM', '2RM', '기타'];
+  // RM 그룹을 하드코딩하지 않고 실제 데이터에서 뽑아서 정렬 (숫자 RM 먼저, "기타"류는 뒤로)
+  const rmOrder = Object.keys(rmGroups).sort((a, b) => {
+    const na = parseInt(a), nb = parseInt(b);
+    const aNum = !isNaN(na), bNum = !isNaN(nb);
+    if (aNum && bNum) return na - nb;
+    if (aNum) return -1;
+    if (bNum) return 1;
+    return a.localeCompare(b, 'ko');
+  });
   const orgRowHtml = ({ org, pass, total }) => {
     const pct = Math.round(pass / total * 100);
     const color = pct === 100 ? 'var(--green)' : pct >= 60 ? 'var(--amber)' : 'var(--red)';
@@ -1388,7 +1404,6 @@ function renderOrgByRM(data, containerId, useGrid) {
     </div>`;
   };
   document.getElementById(containerId).innerHTML = rmOrder
-    .filter(rm => rmGroups[rm]?.length)
     .map(rm => `<div class="rm-group"><div class="rm-label">${rm}</div>${rmGroups[rm].map(orgRowHtml).join('')}</div>`)
     .join('');
 }
@@ -1450,7 +1465,7 @@ function renderFailTable(data) {
           <td style="font-weight:500">${d.score}점</td>
           <td>${d.effectiveTarget}점${d.deduct > 0 ? `<span class="badge badge-adj">−${d.deduct}</span>` : ''}</td>
           <td><div class="rate-cell"><div class="progress-bar" style="flex:1"><div class="progress-fill fill-fail" style="width:${Math.min(d.rate, 100)}%"></div></div><span class="rate-num">${d.rate}%</span></div></td>
-          <td><input type="checkbox" ${interviews[key] ? 'checked' : ''} onchange="toggleInterview('${key}',this)"></td>
+          <td><input type="checkbox" ${interviews[key] ? 'checked' : ''} onchange="toggleInterview('${d.name}','${week}',this)"></td>
         </tr>`;
       }).join('');
 }
@@ -1624,9 +1639,14 @@ async function removeAtt(key, idx) {
     .catch(e => console.warn('근태 삭제 실패:', e));
 }
 
-function toggleInterview(key, el) {
-  interviews[key] = el.checked;
-  localStorage.setItem('dashboard_interviews', JSON.stringify(interviews));
+function toggleInterview(name, week, el) {
+  const key = name + '_' + week;
+  interviews[key] = el.checked; // 즉시 UI 반영, 서버에도 저장 (localStorage는 기기별로 갈려서 더 이상 안 씀)
+  fetch(SCRIPT_URL, {
+    method: 'POST', mode: 'no-cors',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({ action: 'toggleInterview', name, week, checked: String(el.checked), admin: ADMIN_KEY })
+  }).catch(e => console.warn('면담여부 저장 실패:', e));
 }
 
 // ── 탭 전환 ──
