@@ -248,6 +248,7 @@
 </div>
 
 <div id="identity-bar" class="identity-bar"></div>
+<div id="sync-banner" style="display:none;align-items:center;justify-content:space-between;gap:10px;background:var(--amber-bg);color:var(--amber);border-bottom:1px solid #F3D9A8;padding:8px 16px;font-size:12px;font-weight:600"></div>
 
 <!-- ── 탭 1: 입력 ── -->
 <div id="page-input" class="page active">
@@ -419,15 +420,20 @@ const SHEET_ID   = '13BHBgMAko9jNZoPIwOe5EqML8n56RCPl4gHhrIrMU0U';
 const LOG_GID    = '785851831';
 
 const params = new URLSearchParams(location.search);
-const NAME = decodeURIComponent(params.get('name') || '');
-const ORG  = decodeURIComponent(params.get('org')  || '');
-const ROLE = decodeURIComponent(params.get('role') || '');
+const NAME = params.get('name') || '';
+const ORG  = params.get('org')  || '';
+const ROLE = params.get('role') || '';
+const KEY  = params.get('key')  || '';
 
 const bar = document.getElementById('identity-bar');
-if (!NAME) {
+if (!NAME || !KEY) {
   bar.innerHTML = '<span class="id-missing">⚠️ 개인 링크로 접속해 주세요</span>';
 } else {
-  bar.innerHTML = `<span class="chip chip-name">👤 ${NAME}</span><span class="chip">${ORG}</span><span class="chip">${ROLE}</span>`;
+  bar.innerHTML = `<span class="chip chip-name">👤 ${esc(NAME)}</span><span class="chip">${esc(ORG)}</span><span class="chip">${esc(ROLE)}</span>`;
+}
+
+function esc(s) {
+  return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
 function todayStr() { return new Date().toLocaleDateString('sv'); }
@@ -511,17 +517,16 @@ function updateScore() {
   }
 }
 function checkReady() {
-  document.getElementById('submit-btn').disabled = !(NAME && selPurpose && selMethod);
+  document.getElementById('submit-btn').disabled = !(NAME && KEY && selPurpose && selMethod);
 }
 
 // ── 단체명 자동완성 ──
 let orgNames = [], orgFocusIdx = -1;
 async function loadOrgNames() {
   try {
-    const rows = await fetch(SCRIPT_URL + '?action=getActivityLog&t=' + Date.now()).then(r => r.json());
-    const set = new Set();
-    rows.forEach(r => { if (r.orgName) set.add(r.orgName); });
-    orgNames = [...set].sort((a,b) => a.localeCompare(b, 'ko'));
+    // 전체 활동을 안 받고, 단체명 목록만 가볍게 조회 (조회 권한 분리)
+    const names = await fetch(SCRIPT_URL + '?action=getOrgNames&name=' + encodeURIComponent(NAME) + '&key=' + encodeURIComponent(KEY) + '&t=' + Date.now()).then(r => r.json());
+    orgNames = Array.isArray(names) ? [...names].sort((a,b) => a.localeCompare(b, 'ko')) : [];
   } catch(e) { orgNames = []; }
 }
 function onOrgInput() {
@@ -531,13 +536,17 @@ function onOrgInput() {
   if (!matches.length) { box.style.display = 'none'; return; }
   orgFocusIdx = -1;
   box.innerHTML = matches.map((n,i) => {
-    const hi = q ? n.replace(q, `<strong style="color:var(--blue)">${q}</strong>`) : n;
-    return `<div data-idx="${i}" data-val="${n.replace(/"/g,'&quot;')}"
-      style="padding:10px 14px;font-size:14px;cursor:pointer;border-bottom:1px solid var(--border)"
-      onmousedown="selectOrg('${n.replace(/'/g,"\\'")}')">🏢 ${hi}</div>`;
+    const escN = esc(n);
+    const hi = q ? escN.replace(esc(q), `<strong style="color:var(--blue)">${esc(q)}</strong>`) : escN;
+    return `<div data-idx="${i}" data-val="${escN}"
+      style="padding:10px 14px;font-size:14px;cursor:pointer;border-bottom:1px solid var(--border)">🏢 ${hi}</div>`;
   }).join('');
   box.style.display = 'block';
 }
+document.getElementById('org-dropdown').addEventListener('mousedown', (e) => {
+  const item = e.target.closest('[data-val]');
+  if (item) selectOrg(item.dataset.val);
+});
 function selectOrg(val) {
   document.getElementById('org-name').value = val;
   document.getElementById('org-dropdown').style.display = 'none';
@@ -558,8 +567,92 @@ loadOrgNames();
 
 let lastPayload = null, editMode = false, editSubmitTime = null;
 
+// ── 전송 헬퍼 (실제 응답을 읽는다) ──
+// Apps Script는 e.postData.contents를 그냥 문자열로 파싱하므로 Content-Type이
+// text/plain이어도 서버 로직엔 영향 없다. text/plain은 CORS 단순요청이라
+// 프리플라이트 없이 나가고, mode:'no-cors'를 쓰지 않으므로 응답을 읽을 수 있다.
+async function postJSON(payload) {
+  try {
+    const res  = await fetch(SCRIPT_URL, { method:'POST', headers:{'Content-Type':'text/plain;charset=utf-8'}, body: JSON.stringify(payload) });
+    const json = await res.json();
+    return (json && json.ok) ? { ok:true } : { ok:false, error: (json && json.error) || '서버에서 저장 실패로 응답' };
+  } catch(e) { return { ok:false, error:'network' }; }
+}
+async function postForm(paramsObj) {
+  try {
+    const res  = await fetch(SCRIPT_URL, { method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body: new URLSearchParams(paramsObj) });
+    const json = await res.json();
+    return (json && json.ok) ? { ok:true } : { ok:false, error: (json && json.error) || '서버에서 저장 실패로 응답' };
+  } catch(e) { return { ok:false, error:'network' }; }
+}
+
+// ── 로컬 백업 큐 (제출 유실 방지) ──
+// 정상 응답을 받으면 즉시 큐에서 제거한다. 네트워크 자체가 끊겨 응답을 못 받은
+// 경우(error==='network')에만 큐에 남겨두고, 시트를 재조회해서 실제 반영 여부를
+// 뒤늦게 확인한다 (요청은 갔지만 응답만 못 받았을 수 있어서 무작정 재전송하면
+// 중복 기록이 생길 수 있기 때문).
+const PENDING_KEY = 'sp_pending_queue_v1';
+function uuid() { return (crypto.randomUUID ? crypto.randomUUID() : 'id-' + Date.now() + '-' + Math.random().toString(36).slice(2)); }
+function getPending() { try { return JSON.parse(localStorage.getItem(PENDING_KEY) || '[]'); } catch(e) { return []; } }
+function setPending(arr) { localStorage.setItem(PENDING_KEY, JSON.stringify(arr)); renderSyncBanner(); }
+function addPending(item) { const arr = getPending(); arr.push(item); setPending(arr); }
+function removePending(id) { setPending(getPending().filter(p => p.id !== id)); }
+function updatePending(id, patch) { setPending(getPending().map(p => p.id === id ? {...p, ...patch} : p)); }
+
+async function activityExists(payload) {
+  try {
+    const rows = await fetch(SCRIPT_URL + '?action=getActivityLog&name=' + encodeURIComponent(NAME) + '&key=' + encodeURIComponent(KEY) + '&t=' + Date.now()).then(r => r.json());
+    return Array.isArray(rows) && rows.some(r => r.name === payload.name && r.actDate === payload.actDate && r.submitTime === payload.submitTime);
+  } catch(e) { return false; }
+}
+async function attendanceExists(payload) {
+  try {
+    const rows = await fetch(SCRIPT_URL + '?action=getAttendance&name=' + encodeURIComponent(NAME) + '&key=' + encodeURIComponent(KEY) + '&t=' + Date.now()).then(r => r.json());
+    return Array.isArray(rows) && rows.some(r => r.name === payload.name && String(r.date) === payload.date && r.label === payload.label);
+  } catch(e) { return false; }
+}
+async function verifyPendingItem(item) {
+  const exists = item.kind === 'activity' ? await activityExists(item.payload) : await attendanceExists(item.payload);
+  if (exists) { removePending(item.id); return true; }
+  const cur = getPending().find(p => p.id === item.id);
+  if (cur) updatePending(item.id, { attempts: (cur.attempts || 0) + 1, status: (Date.now() - cur.createdAt > 20000) ? 'unconfirmed' : 'pending' });
+  return false;
+}
+let flushingQueue = false;
+async function flushPendingQueue() {
+  if (flushingQueue) return;
+  flushingQueue = true;
+  for (const item of getPending()) { await verifyPendingItem(item); }
+  flushingQueue = false;
+}
+async function resendPending(item) {
+  const result = item.kind === 'activity' ? await postJSON(item.payload) : await postForm(item.payload);
+  if (result.ok) { removePending(item.id); return; }
+  updatePending(item.id, { status: result.error === 'network' ? 'pending' : 'unconfirmed', attempts: 0, createdAt: Date.now() });
+  if (result.error === 'network') setTimeout(() => verifyPendingItem(getPending().find(p => p.id === item.id) || item), 3000);
+}
+function retryPendingNow() {
+  getPending().forEach(resendPending);
+}
+function renderSyncBanner() {
+  const items = getPending();
+  const banner = document.getElementById('sync-banner');
+  if (!banner) return;
+  if (!items.length) { banner.style.display = 'none'; return; }
+  banner.style.display = 'flex';
+  const unconfirmed = items.filter(i => i.status === 'unconfirmed').length;
+  banner.innerHTML = unconfirmed
+    ? `<span>⚠️ 저장 확인 안 된 기록 ${items.length}건</span><button onclick="retryPendingNow()" style="background:none;border:1px solid var(--amber);border-radius:6px;padding:3px 10px;color:var(--amber);font-family:inherit;font-size:11px;cursor:pointer">재시도</button>`
+    : `<span>⏳ 저장 확인 중... (${items.length}건)</span>`;
+}
+setInterval(() => { if (getPending().length) flushPendingQueue(); }, 4000);
+window.addEventListener('online', flushPendingQueue);
+document.addEventListener('visibilitychange', () => { if (!document.hidden) flushPendingQueue(); });
+renderSyncBanner();
+flushPendingQueue();
+
 async function submitForm() {
-  if (!NAME || !selPurpose || !selMethod) return;
+  if (!NAME || !KEY || !selPurpose || !selMethod) return;
   const btn = document.getElementById('submit-btn');
   btn.disabled = true;
   btn.innerHTML = '<div class="spinner"></div> ' + (editMode ? '저장 중...' : '제출 중...');
@@ -569,7 +662,7 @@ async function submitForm() {
     type: editMode ? 'activity_update' : 'activity_v2',
     submitTime: newSubmitTime,
     originalSubmitTime: editMode ? editSubmitTime : null,
-    actDate: dateStr, org: ORG, name: NAME, role: ROLE,
+    actDate: dateStr, org: ORG, name: NAME, role: ROLE, key: KEY,
     purpose: selPurpose, method: selMethod,
     orgName: document.getElementById('org-name').value.trim(),
     contact: document.getElementById('contact').value.trim(),
@@ -577,15 +670,20 @@ async function submitForm() {
     score: selScore, category: selCategory || '', scheme: selScheme || ''
   };
   lastPayload = payload;
-  try {
-    await fetch(SCRIPT_URL, { method:'POST', mode:'no-cors', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+  const result = await postJSON(payload);
+  if (result.ok) {
     editMode = false; editSubmitTime = null;
     showSuccess();
-  } catch(e) {
-    btn.disabled = false;
-    btn.innerHTML = editMode ? '수정 저장' : '제출하기';
-    alert('오류가 발생했습니다. 다시 시도해 주세요.');
+    return;
   }
+  const pendingId = uuid();
+  addPending({ id: pendingId, kind: 'activity', payload, createdAt: Date.now(), attempts: 0, status: result.error === 'network' ? 'pending' : 'unconfirmed' });
+  if (result.error === 'network') setTimeout(() => verifyPendingItem(getPending().find(p => p.id === pendingId) || { id: pendingId, kind:'activity', payload, createdAt: Date.now() }), 3000);
+  btn.disabled = false;
+  btn.innerHTML = editMode ? '수정 저장' : '제출하기';
+  alert(result.error === 'network'
+    ? '네트워크 오류로 전송하지 못했습니다. 잠시 후 자동으로 다시 시도합니다 (하단 배너 확인).'
+    : ('저장에 실패했습니다: ' + result.error + '\n하단 배너의 재시도 버튼으로 다시 시도할 수 있어요.'));
 }
 
 function showSuccess() {
@@ -595,10 +693,10 @@ function showSuccess() {
   document.getElementById('success-sub').textContent = `${d.actDate} · ${d.purpose} · ${d.method} · +${d.score}점`;
   const pbC = ['pb0','pb1','pb2'];
   document.getElementById('submitted-rows').innerHTML = [
-    ['활동목적', `<span class="pb ${pbC[selIdx]}">${d.purpose}</span>`],
-    ['활동방식', `<span class="mb">${d.method}</span>`],
-    ['단체명', d.orgName || '—'], ['담당자', d.contact || '—'],
-    ['내용', d.content || '—'], ['점수', `<strong>+${d.score}점</strong>`],
+    ['활동목적', `<span class="pb ${pbC[selIdx]}">${esc(d.purpose)}</span>`],
+    ['활동방식', `<span class="mb">${esc(d.method)}</span>`],
+    ['단체명', esc(d.orgName) || '—'], ['담당자', esc(d.contact) || '—'],
+    ['내용', esc(d.content) || '—'], ['점수', `<strong>+${d.score}점</strong>`],
   ].map(([k,v]) => `<div class="detail-row"><span class="dk">${k}</span><span class="dv">${v}</span></div>`).join('');
   cachedRows = null;
 }
@@ -651,12 +749,14 @@ function editActivity(data) {
 
 async function deleteActivity(submitTime) {
   if (!confirm('이 활동 기록을 삭제하시겠습니까?')) return;
-  try {
-    await fetch(SCRIPT_URL, { method:'POST', mode:'no-cors', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ type:'activity_delete', submitTime, name:NAME, org:ORG }) });
+  const result = await postJSON({ type:'activity_delete', submitTime, name:NAME, org:ORG, key:KEY });
+  if (result.ok) {
     cachedRows = null;
     loadRecords();
     alert('삭제되었습니다.');
-  } catch(e) { alert('삭제 중 오류가 발생했습니다.'); }
+  } else {
+    alert('삭제 중 오류가 발생했습니다' + (result.error && result.error !== 'network' ? (': ' + result.error) : '') + '. 다시 시도해 주세요.');
+  }
 }
 
 // ── 내 기록 탭 ──
@@ -676,22 +776,26 @@ function changeWeek(dir) {
 
 async function loadRecords() {
   const weekStr = getOffsetWeekStr(viewWeekOffset);
-  const label = viewWeekOffset === 0 ? '이번 주' : viewWeekOffset === -1 ? '지난 주' : `${weekStr}주`;
+  const label = viewWeekOffset === 0 ? '이번 주' : viewWeekOffset === -1 ? '지난 주' : weekStrToLabel(weekStr);
   document.getElementById('week-nav-label').textContent = label;
   document.getElementById('next-week-btn').disabled = viewWeekOffset >= 0;
   const el = document.getElementById('records-content');
   el.innerHTML = '<div class="loading-wrap"><div class="ls"></div><br>불러오는 중...</div>';
-  if (!NAME) { el.innerHTML = '<div class="no-data"><div class="no-icon">⚠️</div>개인 링크로 접속해 주세요</div>'; return; }
+  if (!NAME || !KEY) { el.innerHTML = '<div class="no-data"><div class="no-icon">⚠️</div>개인 링크로 접속해 주세요</div>'; return; }
   try {
-    // API 실시간 조회 (캐시 없음 — 항상 최신)
-    cachedRows = await fetch(SCRIPT_URL + '?action=getActivityLog&t=' + Date.now()).then(r => r.json());
+    // API 실시간 조회 (캐시 없음 — 항상 최신). 두 요청을 동시에 시작해서 왕복 시간을 줄인다.
+    const authQS = '&name=' + encodeURIComponent(NAME) + '&key=' + encodeURIComponent(KEY);
+    const activityPromise   = fetch(SCRIPT_URL + '?action=getActivityLog' + authQS + '&t=' + Date.now()).then(r => r.json());
+    const attendancePromise = fetch(SCRIPT_URL + '?action=getAttendance' + authQS + '&t=' + Date.now()).then(r => r.json()).catch(() => []);
+
+    cachedRows = await activityPromise;
     if (!Array.isArray(cachedRows) || !cachedRows.length) { el.innerHTML = noDataHTML(); return; }
     const myRows = cachedRows.filter(r => r.name === NAME && getWeekStr(r.actDate) === weekStr);
 
     // 근태 차감 조회
     let deduct = 0;
     try {
-      const attData = await fetch(SCRIPT_URL + '?action=getAttendance&t=' + Date.now()).then(r => r.json());
+      const attData = await attendancePromise;
       const weekLabel = weekStrToLabel(weekStr); // "26년 7월 1주차"
       deduct = attData.filter(r => r.name === NAME && (r.week === weekLabel || r.week === weekStr)).reduce((s, r) => s + Number(r.deduct), 0);
     } catch(e) {}
@@ -718,14 +822,14 @@ async function loadRecords() {
         method: r.method, content: r.content, score: r.score
       });
       const extras = [
-        r.orgName ? `🏢 ${r.orgName}` : '',
-        r.category ? `[${r.category}]` : '',
-        r.scheme ? `[${r.scheme}]` : '',
-        r.content || ''
+        r.orgName ? `🏢 ${esc(r.orgName)}` : '',
+        r.category ? `[${esc(r.category)}]` : '',
+        r.scheme ? `[${esc(r.scheme)}]` : '',
+        esc(r.content) || ''
       ].filter(Boolean).join('  ');
       return `<div class="act-item">
-        <div class="act-item-top"><span class="act-date">📅 ${r.actDate}</span><span class="act-score">+${r.score}점</span></div>
-        <div class="act-badges"><span class="pb ${pbMap[r.purpose]||''}">${r.purpose||'—'}</span>${r.method?`<span class="mb">${r.method}</span>`:''}</div>
+        <div class="act-item-top"><span class="act-date">📅 ${esc(r.actDate)}</span><span class="act-score">+${r.score}점</span></div>
+        <div class="act-badges"><span class="pb ${pbMap[r.purpose]||''}">${esc(r.purpose)||'—'}</span>${r.method?`<span class="mb">${esc(r.method)}</span>`:''}</div>
         ${extras?`<div class="act-detail">${extras}</div>`:''}
         <div class="act-actions">
           <button class="btn-edit" data-key="${encodeURIComponent(r.submitTime)}" onclick="editActivity(rowCache.get(decodeURIComponent(this.dataset.key)))">✏️ 수정</button>
@@ -773,7 +877,7 @@ function selectAttType(btn) {
   selAttGroup  = btn.dataset.group;
   btn.classList.add(selAttGroup === 'vac' ? 'sel-vac' : 'sel-trip');
   updateAttPreview();
-  document.getElementById('att-submit-btn').disabled = !NAME;
+  document.getElementById('att-submit-btn').disabled = !(NAME && KEY);
 }
 
 function updateAttPreview() {
@@ -796,19 +900,32 @@ function updateAttPreview() {
   }
 }
 
+// 같은 이름+날짜+라벨 조합이 이미 등록돼 있는지 사전 확인 (중복 등록 방지 1차 방어선)
+// 최종 방어는 서버 handleAttendancePost에서 함
+async function checkAttDuplicate(date, label) {
+  try {
+    const rows = await fetch(SCRIPT_URL + '?action=getAttendance&name=' + encodeURIComponent(NAME) + '&key=' + encodeURIComponent(KEY) + '&t=' + Date.now()).then(r => r.json());
+    return Array.isArray(rows) && rows.some(r => r.name === NAME && String(r.date) === date && r.label === label);
+  } catch(e) { return false; }
+}
+
 async function submitAtt() {
-  if (!NAME || !selAttLabel) return;
+  if (!NAME || !KEY || !selAttLabel) return;
   const btn  = document.getElementById('att-submit-btn');
   btn.disabled = true;
-  btn.innerHTML = '<div class="spinner"></div> 등록 중...';
+  btn.innerHTML = '<div class="spinner"></div> 확인 중...';
   const date = document.getElementById('att-date').value || todayStr();
   const week = weekStrToLabel(getWeekStr(date)); // "26년 7월 1주차" 형식으로 저장
-  try {
-    await fetch(SCRIPT_URL, {
-      method: 'POST', mode: 'no-cors',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams({ action:'addAttendance', name:NAME, week, date, label:selAttLabel, deduct:String(selAttDeduct) })
-    });
+  if (await checkAttDuplicate(date, selAttLabel)) {
+    btn.disabled = false;
+    btn.innerHTML = '근태 등록';
+    alert(`이미 ${date}에 '${selAttLabel}' 기록이 등록되어 있습니다.`);
+    return;
+  }
+  btn.innerHTML = '<div class="spinner"></div> 등록 중...';
+  const payload = { action:'addAttendance', name:NAME, week, date, label:selAttLabel, deduct:String(selAttDeduct), key:KEY };
+  const result = await postForm(payload);
+  if (result.ok) {
     btn.innerHTML = '✅ 등록되었습니다';
     setTimeout(() => {
       btn.disabled = false;
@@ -821,19 +938,24 @@ async function submitAtt() {
       document.getElementById('att-date').value = todayStr();
     }, 1500);
     loadAttRecords();
-  } catch(e) {
-    btn.disabled = false;
-    btn.innerHTML = '근태 등록';
-    alert('오류가 발생했습니다. 다시 시도해 주세요.');
+    return;
   }
+  const pendingId = uuid();
+  addPending({ id: pendingId, kind: 'attendance', payload, createdAt: Date.now(), attempts: 0, status: result.error === 'network' ? 'pending' : 'unconfirmed' });
+  if (result.error === 'network') setTimeout(() => verifyPendingItem(getPending().find(p => p.id === pendingId) || { id: pendingId, kind:'attendance', payload, createdAt: Date.now() }), 3000);
+  btn.disabled = false;
+  btn.innerHTML = '근태 등록';
+  alert(result.error === 'network'
+    ? '네트워크 오류로 전송하지 못했습니다. 잠시 후 자동으로 다시 시도합니다 (하단 배너 확인).'
+    : ('등록에 실패했습니다: ' + result.error + '\n하단 배너의 재시도 버튼으로 다시 시도할 수 있어요.'));
 }
 
 async function loadAttRecords() {
   const el = document.getElementById('att-records');
   el.innerHTML = '<div class="loading-wrap"><div class="ls"></div></div>';
-  if (!NAME) { el.innerHTML = ''; return; }
+  if (!NAME || !KEY) { el.innerHTML = ''; return; }
   try {
-    const res  = await fetch(SCRIPT_URL + '?action=getAttendance&t=' + Date.now());
+    const res  = await fetch(SCRIPT_URL + '?action=getAttendance&name=' + encodeURIComponent(NAME) + '&key=' + encodeURIComponent(KEY) + '&t=' + Date.now());
     const rows = await res.json();
     const weekInternal = currentWeekStr();          // "26-27"
     const weekLabel    = weekStrToLabel(weekInternal); // "26년 7월 1주차"
@@ -862,14 +984,12 @@ async function loadAttRecords() {
 
 async function deleteAtt(date, label, week) {
   if (!confirm(`'${label}' 기록을 삭제할까요?`)) return;
-  try {
-    await fetch(SCRIPT_URL, {
-      method: 'POST', mode: 'no-cors',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams({ action:'removeAttendance', name:NAME, week, date, label })
-    });
+  const result = await postForm({ action:'removeAttendance', name:NAME, week, date, label, key:KEY });
+  if (result.ok) {
     loadAttRecords();
-  } catch(e) { alert('삭제 중 오류가 발생했습니다.'); }
+  } else {
+    alert('삭제 중 오류가 발생했습니다' + (result.error && result.error !== 'network' ? (': ' + result.error) : '') + '. 다시 시도해 주세요.');
+  }
 }
 
 function downloadMyCSV(scope) {
