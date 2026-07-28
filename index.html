@@ -244,11 +244,6 @@
   .filter-row input:focus, .filter-row select:focus { outline: none; border-color: var(--blue); }
 
   /* ── 근태 관리 ── */
-  .att-form-row {
-    display: flex; gap: 8px; align-items: center;
-    padding: 14px 16px; background: var(--surface2);
-    border-radius: var(--radius-sm); margin-bottom: 16px; flex-wrap: wrap;
-  }
   .att-cards { display: flex; flex-direction: column; gap: 16px; }
   .att-org-group {}
   .att-org-label {
@@ -274,12 +269,6 @@
   .att-item-right { display: flex; align-items: center; gap: 6px; }
   .att-deduct { color: var(--red); font-weight: 600; font-size: 11px; }
   .att-record-only { color: var(--blue); font-weight: 600; font-size: 11px; background: var(--blue-bg); padding: 1px 6px; border-radius: 4px; }
-  .btn-del {
-    font-size: 11px; padding: 2px 8px; border-radius: 4px;
-    border: 1px solid var(--border); background: var(--surface);
-    color: var(--text3); cursor: pointer; font-family: inherit;
-  }
-  .btn-del:hover { background: var(--red-bg); color: var(--red); border-color: var(--red); }
   .att-empty { text-align: center; padding: 32px; color: var(--text3); font-size: 13px; }
 
   /* ── 기준표 ── */
@@ -413,9 +402,6 @@
     .filter-row input { min-width: 100%; font-size: 12px; }
 
     .att-cards { grid-template-columns: 1fr; }
-    .att-form-row { flex-direction: column; align-items: stretch; }
-    .att-form-row select, .att-form-row input { width: 100%; }
-    .att-form-row .btn-primary { width: 100%; padding: 10px; text-align: center; }
 
     .config-section { max-width: 100%; }
 
@@ -565,7 +551,7 @@
           </div>
           <div class="table-wrap">
             <table>
-              <thead><tr><th>이름</th><th>소속</th><th>점수</th><th>목표</th><th>달성률</th><th>면담여부</th></tr></thead>
+              <thead><tr><th>이름</th><th>소속</th><th>점수</th><th>목표</th><th>달성률</th></tr></thead>
               <tbody id="fail-table"></tbody>
             </table>
           </div>
@@ -686,27 +672,8 @@
     <div id="view-attendance" class="view">
       <div class="section">
         <div class="section-header">
-          <span class="section-title">근태 등록</span>
-          <span class="section-sub">근태 입력 시 해당 주 목표점수 자동 보정</span>
-        </div>
-        <div class="att-form-row">
-          <select id="att-name"><option value="">이름 선택</option></select>
-          <select id="att-type">
-            <optgroup label="🏖 휴가">
-              <option value="4|1일 휴가">1일 휴가 −4점</option>
-              <option value="2|오전 반차">오전 반차 −2점</option>
-              <option value="2|오후 반차">오후 반차 −2점</option>
-              <option value="1|오전 반반차">오전 반반차 −1점</option>
-              <option value="1|오후 반반차">오후 반반차 −1점</option>
-            </optgroup>
-            <optgroup label="✈️ 출장">
-              <option value="0|1일 출장">1일 출장 (기록만)</option>
-              <option value="0|오전 출장">오전 출장 (기록만)</option>
-              <option value="0|오후 출장">오후 출장 (기록만)</option>
-            </optgroup>
-          </select>
-          <input type="date" id="att-date">
-          <button class="btn-primary" onclick="addAttendance()">+ 추가</button>
+          <span class="section-title">근태 현황</span>
+          <span class="section-sub">근태는 팀장 개인 페이지에서 셀프 등록 · 여기서는 조회만 가능</span>
         </div>
         <div class="att-cards" id="att-cards">
           <div class="att-empty">이번 주 등록된 근태 없음</div>
@@ -790,7 +757,6 @@ let filteredLog = [];
 let weeks = [];
 let rosterMap = {};
 let attendance = {};
-let interviews = {};
 let currentDetailTab = 'all';
 let currentView = 'overview';
 let chartInst = null;
@@ -852,7 +818,6 @@ function loadConfig() {
   document.getElementById('cfg-sheet-id').value   = cfg.sheetId    || DEFAULT_SHEET_ID;
   document.getElementById('cfg-log-gid').value    = cfg.logGid     || DEFAULT_LOG_GID;
   document.getElementById('cfg-roster-gid').value = cfg.rosterGid  || DEFAULT_ROSTER_GID;
-  // 면담여부는 기기별로 갈리면 안 되니 localStorage가 아니라 시트에서 불러온다 (loadData 참고)
 }
 
 function saveConfig() {
@@ -890,14 +855,11 @@ async function loadData() {
   }
   try {
     // 서로 의존하지 않는 요청들을 동시에 시작해서 왕복 시간을 줄인다.
-    const [rosterRows, logJson, interviewRows] = await Promise.all([
+    const [rosterRows, logJson] = await Promise.all([
       fetch(SCRIPT_URL + '?action=getRoster&' + ADMIN_QS + '&t=' + Date.now()).then(r => r.json()).catch(() => []),
       fetch(SCRIPT_URL + '?action=getActivityLog&' + ADMIN_QS + '&t=' + Date.now()).then(r => r.json()).catch(() => []),
-      fetch(SCRIPT_URL + '?action=getInterviews&' + ADMIN_QS + '&t=' + Date.now()).then(r => r.json()).catch(() => []),
       fetchAttendance()
     ]);
-    interviews = {};
-    if (Array.isArray(interviewRows)) interviewRows.forEach(r => { interviews[r.name + '_' + r.week] = true; });
     let roster = [];
     if (Array.isArray(rosterRows) && rosterRows.length) {
       roster = rosterRows.filter(r => r.name && r.role !== 'RM');
@@ -935,7 +897,6 @@ async function loadData() {
     allData = buildWeeklySummary(activities, roster, weeks);
 
     buildWeekSelect();
-    populateAttNames();
     renderAll();
     populateLogFilters();
     applyLogFilter();
@@ -1188,9 +1149,9 @@ function exportTableCSV() {
 function exportOverviewCSV() {
   const data = getCurrentData().filter(d => d.role === '팀장' && !d.pass);
   if (!data.length) { alert('미달자 데이터가 없습니다.'); return; }
-  const header = ['이름', '소속', '점수', '목표', '달성률(%)', '면담여부'];
+  const header = ['이름', '소속', '점수', '목표', '달성률(%)'];
   const week = getCurrentWeek();
-  const rows = data.map(d => [d.name, d.org, d.score, d.effectiveTarget, d.rate, interviews[d.name + '_' + week] ? 'Y' : 'N']);
+  const rows = data.map(d => [d.name, d.org, d.score, d.effectiveTarget, d.rate]);
   exportCSV(header, rows, `미달자현황_${week}.csv`);
 }
 
@@ -1252,7 +1213,6 @@ function useDemoData() {
   allData = DEMO;
   weeks = WEEKS;
   buildWeekSelect();
-  populateAttNames();
   renderAll();
 }
 
@@ -1454,18 +1414,15 @@ function renderMobileOverview(data) {
 // ── 미달자 테이블 ──
 function renderFailTable(data) {
   const fails = data.filter(d => d.role === '팀장' && !d.pass);
-  const week = getCurrentWeek();
   document.getElementById('fail-table').innerHTML = fails.length === 0
-    ? `<tr><td colspan="6" style="text-align:center;padding:24px;color:var(--text3)">이번 주 미달자 없음 🎉</td></tr>`
+    ? `<tr><td colspan="5" style="text-align:center;padding:24px;color:var(--text3)">이번 주 미달자 없음 🎉</td></tr>`
     : fails.map(d => {
-        const key = d.name + '_' + week;
         return `<tr>
           <td class="td-name">${d.name}</td>
           <td class="td-muted">${d.org}</td>
           <td style="font-weight:500">${d.score}점</td>
           <td>${d.effectiveTarget}점${d.deduct > 0 ? `<span class="badge badge-adj">−${d.deduct}</span>` : ''}</td>
           <td><div class="rate-cell"><div class="progress-bar" style="flex:1"><div class="progress-fill fill-fail" style="width:${Math.min(d.rate, 100)}%"></div></div><span class="rate-num">${d.rate}%</span></div></td>
-          <td><input type="checkbox" ${interviews[key] ? 'checked' : ''} onchange="toggleInterview('${d.name}','${week}',this)"></td>
         </tr>`;
       }).join('');
 }
@@ -1558,7 +1515,6 @@ function renderAttCards() {
                   <span class="att-item-label">${fmtAttDate(a.date)} · ${a.label}</span>
                   <div class="att-item-right">
                     <span class="att-deduct">−${a.deduct}점</span>
-                    <button class="btn-del" onclick="removeAtt('${key}',${a._i})">삭제</button>
                   </div>
                 </div>`).join('')}` : ''}
             ${tripItems.length ? `
@@ -1568,85 +1524,12 @@ function renderAttCards() {
                   <span class="att-item-label">${fmtAttDate(a.date)} · ${a.label}</span>
                   <div class="att-item-right">
                     <span class="att-record-only">기록</span>
-                    <button class="btn-del" onclick="removeAtt('${key}',${a._i})">삭제</button>
                   </div>
                 </div>`).join('')}` : ''}
           </div>`;
         }).join('')}
       </div>
     </div>`).join('');
-}
-
-// ── 근태 추가/삭제/면담 ──
-function populateAttNames() {
-  const week = getCurrentWeek();
-  const names = [...new Set(allData.filter(r => r.week === week && r.role === '팀장').map(r => r.name))];
-  const sel = document.getElementById('att-name');
-  const cur = sel.value;
-  sel.innerHTML = '<option value="">이름 선택</option>' +
-    names.map(n => {
-      const r = allData.find(d => d.name === n && d.week === week);
-      return `<option value="${n}" ${n === cur ? 'selected' : ''}>${n} (${r?.org || ''})</option>`;
-    }).join('');
-}
-
-async function addAttendance() {
-  const name = document.getElementById('att-name').value;
-  const typeEl = document.getElementById('att-type');
-  const [deductStr, label] = typeEl.value.split('|');
-  const deduct = parseInt(deductStr);
-  const date = document.getElementById('att-date').value;
-  if (!name || !date) { alert('이름과 날짜를 모두 입력해주세요'); return; }
-
-  // 중복 등록 방지 (같은 이름+날짜+라벨). 최종 방어는 서버 handleAttendancePost에서 함
-  const dup = Object.entries(attendance).some(([k, items]) =>
-    k.startsWith(name + '_') && items.some(a => a.date === date && a.label === label)
-  );
-  if (dup) { alert(`이미 ${date}에 '${label}' 기록이 등록되어 있습니다.`); return; }
-
-  const week = getCurrentWeek();
-  // 즉시 UI 반영
-  const key = name + '_' + week;
-  if (!attendance[key]) attendance[key] = [];
-  attendance[key].push({ date, deduct, label, sheetWeek: weekStrToLabel(week) });
-  renderAll();
-  // API 저장 후 재조회로 동기화
-  fetch(SCRIPT_URL, {
-    method: 'POST', mode: 'no-cors',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams({ action: 'addAttendance', name, week: weekStrToLabel(week), date, label, deduct: String(deduct), admin: ADMIN_KEY })
-  }).then(() => setTimeout(async () => { await fetchAttendance(); renderAll(); }, 1500))
-    .catch(e => console.warn('근태 저장 실패:', e));
-}
-
-async function removeAtt(key, idx) {
-  const item = attendance[key][idx];
-  // 즉시 UI 반영
-  attendance[key].splice(idx, 1);
-  if (!attendance[key].length) delete attendance[key];
-  renderAll();
-  // API 삭제 후 재조회로 동기화
-  // sheetWeek: 시트에 실제 저장된 주차 문자열 (신규: "26년 7월 1주차", 구형: "26-27")
-  const weekMatch = key.match(/_(\d{2}-\d{2})$/);
-  const rWeekInternal = weekMatch ? weekMatch[1] : '';
-  const rName = rWeekInternal ? key.slice(0, -(rWeekInternal.length + 1)) : key;
-  const rWeek = item.sheetWeek || weekStrToLabel(rWeekInternal);
-  fetch(SCRIPT_URL, {
-    method: 'POST', mode: 'no-cors',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams({ action: 'removeAttendance', name: rName, week: rWeek, date: item.date, label: item.label, admin: ADMIN_KEY })
-  }).then(() => setTimeout(async () => { await fetchAttendance(); renderAll(); }, 1500))
-    .catch(e => console.warn('근태 삭제 실패:', e));
-}
-
-function toggleInterview(name, week, el) {
-  const key = name + '_' + week;
-  interviews[key] = el.checked; // 즉시 UI 반영, 서버에도 저장 (localStorage는 기기별로 갈려서 더 이상 안 씀)
-  fetch(SCRIPT_URL, {
-    method: 'POST', mode: 'no-cors',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams({ action: 'toggleInterview', name, week, checked: String(el.checked), admin: ADMIN_KEY })
-  }).catch(e => console.warn('면담여부 저장 실패:', e));
 }
 
 // ── 탭 전환 ──
@@ -1686,7 +1569,7 @@ function switchView(view, from) {
     setTimeout(() => renderChart(d), 50);
   }
   if (view === 'table')      renderMainTable(getCurrentData());
-  if (view === 'attendance') { populateAttNames(); renderAttCards(); }
+  if (view === 'attendance') renderAttCards();
   if (view === 'log')        applyLogFilter();
   if (view === 'orgs')       renderOrgTable();
 }
@@ -1713,7 +1596,6 @@ function renderAll() {
   } else if (currentView === 'table') {
     renderMainTable(data);
   } else if (currentView === 'attendance') {
-    populateAttNames();
     renderAttCards();
   } else if (currentView === 'orgs') {
     renderOrgTable();
