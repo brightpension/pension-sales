@@ -609,17 +609,17 @@
 
         <!-- 필터 -->
         <div class="filter-row">
-          <select id="lf-week" onchange="applyLogFilter()"><option value="">전체 주차</option></select>
-          <select id="lf-org" onchange="applyLogFilter()"><option value="">전체 사업단</option></select>
-          <select id="lf-name" onchange="applyLogFilter()"><option value="">전체 이름</option></select>
+          <select id="lf-week" onchange="applyLogFilter()"><option value="">주차</option></select>
+          <select id="lf-org" onchange="applyLogFilter()"><option value="">사업단</option></select>
+          <select id="lf-name" onchange="applyLogFilter()"><option value="">팀장</option></select>
           <select id="lf-purpose" onchange="applyLogFilter()">
-            <option value="">—</option>
+            <option value="">목적</option>
             <option value="신규발굴">신규발굴</option>
             <option value="펀드상담">펀드상담</option>
             <option value="단체관리">단체관리</option>
           </select>
           <select id="lf-method" onchange="applyLogFilter()">
-            <option value="">—</option>
+            <option value="">방식</option>
             <option value="방문">방문</option>
             <option value="중식">중식</option>
             <option value="석식">석식</option>
@@ -944,10 +944,10 @@ function populateLogFilters() {
   // 주차는 값은 "26-25" 유지, 표시는 "26년 6월 3주차"
   const sel = document.getElementById('lf-week');
   const cur = sel ? sel.value : '';
-  if (sel) sel.innerHTML = `<option value="">—</option>` +
+  if (sel) sel.innerHTML = `<option value="">주차</option>` +
     logWeeks.map(w => `<option value="${w}" ${w === cur ? 'selected' : ''}>${weekStrToLabel(w)}</option>`).join('');
-  setSelectOptions('lf-org',  logOrgs,  '—');
-  setSelectOptions('lf-name', logNames, '—');
+  setSelectOptions('lf-org',  logOrgs,  '사업단');
+  setSelectOptions('lf-name', logNames, '팀장');
 }
 
 function setSelectOptions(id, values, placeholder) {
@@ -1570,7 +1570,11 @@ function switchView(view, from) {
   }
   if (view === 'table')      renderMainTable(getCurrentData());
   if (view === 'attendance') renderAttCards();
-  if (view === 'log')        applyLogFilter();
+  if (view === 'log') {
+    // 활동일지 탭을 열 때는 매번 현재 선택된 주차로 기본 필터링 (전체 기간이 한번에 안 보이게)
+    document.getElementById('lf-week').value = getCurrentWeek();
+    applyLogFilter();
+  }
   if (view === 'orgs')       renderOrgTable();
 }
 
