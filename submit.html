@@ -279,14 +279,14 @@
       </div>
     </div>
     <div class="section">
-      <div class="section-label">🏷 단체구분 <span>(선택)</span></div>
+      <div class="section-label">🏷 단체구분</div>
       <div class="btn-group">
         <button class="btn-select" data-category="신규" onclick="selectCategory(this)">신규</button>
         <button class="btn-select" data-category="정산" onclick="selectCategory(this)">정산</button>
       </div>
     </div>
     <div class="section">
-      <div class="section-label">📋 제도 <span>(선택)</span></div>
+      <div class="section-label">📋 제도</div>
       <div class="btn-group" style="flex-wrap:wrap">
         <button class="btn-select" data-scheme="DB"    onclick="selectScheme(this)">DB</button>
         <button class="btn-select" data-scheme="DC"    onclick="selectScheme(this)">DC</button>
@@ -368,15 +368,6 @@
         <button class="btn-select" data-att="오후 출장" data-deduct="0" data-group="trip" onclick="selectAttType(this)">오후 출장</button>
       </div>
     </div>
-    <div class="section">
-      <div id="att-preview" class="score-preview">
-        <div>
-          <div class="sp-label">이 항목의 영향</div>
-          <div class="sp-val"><span id="att-preview-val">-</span></div>
-        </div>
-        <div class="sp-icon" id="att-preview-icon">📋</div>
-      </div>
-    </div>
     <button class="btn-submit" id="att-submit-btn" onclick="submitAtt()" disabled>근태 등록</button>
   </div>
 
@@ -391,7 +382,7 @@
   <button class="tab-btn active" id="tab-input" onclick="switchTab('input')">
     <div class="tab-indicator"></div>
     <span class="icon">✏️</span>
-    <span>입력</span>
+    <span>활동 기록</span>
   </button>
   <button class="tab-btn" id="tab-records" onclick="switchTab('records')">
     <div class="tab-indicator"></div>
@@ -871,23 +862,7 @@ function selectAttType(btn) {
 }
 
 function updateAttPreview() {
-  const el   = document.getElementById('att-preview');
-  const val  = document.getElementById('att-preview-val');
-  const icon = document.getElementById('att-preview-icon');
-  if (!selAttLabel) {
-    el.className = 'score-preview';
-    val.textContent = '-'; icon.textContent = '📋';
-    return;
-  }
-  if (selAttGroup === 'vac') {
-    el.className = 'score-preview active-red';
-    val.innerHTML = `<span style="font-size:20px">−${selAttDeduct}점 차감</span>`;
-    icon.textContent = '🏖';
-  } else {
-    el.className = 'score-preview active';
-    val.innerHTML = `<span style="font-size:16px">기록만 (차감 없음)</span>`;
-    icon.textContent = '✈️';
-  }
+  // "이 항목의 영향" 미리보기 카드는 제거됨
 }
 
 // 같은 이름+날짜+라벨 조합이 이미 등록돼 있는지 사전 확인 (중복 등록 방지 1차 방어선)
