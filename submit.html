@@ -106,6 +106,7 @@
     padding: 12px 14px; font-size: 15px; font-family: inherit;
     background: #fff; color: var(--text); outline: none; transition: border-color 0.15s;
   }
+  .date-input { max-width: 200px; padding: 9px 12px; font-size: 14px; }
   .date-input:focus, .text-input:focus, .text-area:focus { border-color: var(--blue-light); }
   .text-area { resize: none; min-height: 80px; }
   ::placeholder { color: #C9CDD4; }
@@ -242,8 +243,7 @@
 
 <div class="header">
   <div>
-    <div class="header-logo">🏢 법인사업부 활동 포털</div>
-    <div class="header-sub">한화생명 영업팀장 전용</div>
+    <div class="header-logo">🏢 한화생명 법인사업부 활동 관리</div>
   </div>
 </div>
 
@@ -296,27 +296,18 @@
       </div>
     </div>
     <div class="section">
-      <div class="section-label">🏢 단체명 <span>(선택)</span></div>
+      <div class="section-label">🏢 단체명</div>
       <input type="text" id="org-name" class="text-input" placeholder="예: 삼성화재, 현대차 노조" maxlength="50"
         autocomplete="off" oninput="onOrgInput()" onfocus="onOrgInput()" onblur="onOrgBlur()" onkeydown="onOrgKey(event)">
       <div id="org-dropdown" style="display:none;position:absolute;z-index:100;background:#fff;border:1px solid var(--border);border-radius:10px;box-shadow:0 4px 16px rgba(0,0,0,0.10);width:calc(100% - 32px);max-height:200px;overflow-y:auto;margin-top:2px"></div>
     </div>
     <div class="section">
-      <div class="section-label">👤 담당자 <span>(선택 · 여러 명이면 쉼표로 구분)</span></div>
+      <div class="section-label">👤 담당자 <span>(여러 명이면 쉼표로 구분)</span></div>
       <input type="text" id="contact" class="text-input" placeholder="예: 홍길동, 김철수" maxlength="100">
     </div>
     <div class="section">
-      <div class="section-label">📝 내용메모 <span>(선택)</span></div>
+      <div class="section-label">📝 활동 내역</div>
       <textarea id="content" class="text-area" placeholder="활동 내용, 특이사항 등 간단히 메모" maxlength="200"></textarea>
-    </div>
-    <div class="section">
-      <div id="score-preview" class="score-preview">
-        <div>
-          <div class="sp-label">이 활동의 점수</div>
-          <div class="sp-val"><span id="score-val">-</span><span>점</span></div>
-        </div>
-        <div class="sp-icon" id="score-icon">🎯</div>
-      </div>
     </div>
     <button class="btn-submit" id="submit-btn" onclick="submitForm()" disabled>제출하기</button>
     <div style="font-size:11px;color:var(--gray);text-align:center;margin-top:8px" id="submit-hint">1건씩 제출 · 제출 후 추가 입력 가능</div>
@@ -482,7 +473,6 @@ function switchTab(tab) {
 // ── 활동 입력 ──
 let selPurpose = null, selScore = 0, selIdx = -1, selMethod = null;
 let selCategory = null, selScheme = null;
-const ICONS = ['🎯','💼','🏢'];
 
 function selectPurpose(btn) {
   document.querySelectorAll('[data-purpose]').forEach(b => b.classList.remove('ap0','ap1','ap2'));
@@ -509,16 +499,7 @@ function selectScheme(btn) {
   btn.classList.add('am');
 }
 function updateScore() {
-  const el = document.getElementById('score-preview');
-  if (selPurpose) {
-    el.classList.add('active');
-    document.getElementById('score-val').textContent = '+' + selScore;
-    document.getElementById('score-icon').textContent = ICONS[selIdx] || '📊';
-  } else {
-    el.classList.remove('active');
-    document.getElementById('score-val').textContent = '-';
-    document.getElementById('score-icon').textContent = '🎯';
-  }
+  // 활동 입력 화면의 점수 미리보기 카드는 제거됨 (제출 후 완료 화면에서 점수 확인 가능)
 }
 function checkReady() {
   document.getElementById('submit-btn').disabled = !(NAME && KEY && selPurpose && selMethod);
