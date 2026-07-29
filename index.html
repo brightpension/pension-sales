@@ -627,6 +627,14 @@
           <span class="section-title">단체별 누적 활동 현황</span>
           <button class="btn-csv" onclick="exportOrgCSV()">⬇ CSV</button>
         </div>
+
+        <!-- 필터 -->
+        <div class="filter-row">
+          <select id="of-org" onchange="renderOrgTable()"><option value="">단체명</option></select>
+          <select id="of-name" onchange="renderOrgTable()"><option value="">영업팀장</option></select>
+          <button style="padding:6px 12px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);color:var(--text2);cursor:pointer;font-family:inherit;font-size:12px" onclick="clearOrgFilter()">초기화</button>
+        </div>
+
         <div class="table-wrap">
           <table>
             <thead>
@@ -875,6 +883,7 @@ async function loadData() {
     renderAll();
     populateLogFilters();
     applyLogFilter();
+    populateOrgFilters();
 
     const now = new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
     document.getElementById('sync-status').textContent = `${now} 업데이트`;
@@ -923,6 +932,20 @@ function populateLogFilters() {
     logWeeks.map(w => `<option value="${w}" ${w === cur ? 'selected' : ''}>${weekStrToLabel(w)}</option>`).join('');
   setSelectOptions('lf-org',  logOrgs,  '사업단');
   setSelectOptions('lf-name', logNames, '팀장');
+}
+
+// ── 단체현황 필터 옵션 ──
+function populateOrgFilters() {
+  const withOrg   = allLogData.filter(a => a.orgName);
+  const orgNames  = [...new Set(withOrg.map(a => a.orgName))].sort();
+  const mgrNames  = [...new Set(withOrg.map(a => a.name))].sort();
+  setSelectOptions('of-org',  orgNames, '단체명');
+  setSelectOptions('of-name', mgrNames, '영업팀장');
+}
+
+function clearOrgFilter() {
+  ['of-org', 'of-name'].forEach(id => document.getElementById(id).value = '');
+  renderOrgTable();
 }
 
 function setSelectOptions(id, values, placeholder) {
@@ -993,9 +1016,13 @@ function renderLogTable() {
 
 // ── 단체별현황 ──
 function computeOrgSummary() {
+  const orgFilter  = document.getElementById('of-org')?.value  || '';
+  const nameFilter = document.getElementById('of-name')?.value || '';
   const map = {};
   allLogData.forEach(a => {
     if (!a.orgName) return;
+    if (orgFilter  && a.orgName !== orgFilter)  return;
+    if (nameFilter && a.name    !== nameFilter) return;
     if (!map[a.orgName]) map[a.orgName] = {
       orgName: a.orgName, total: 0, new_: 0, fund: 0, mgmt: 0,
       visit: 0, lunch: 0, dinner: 0, etc: 0,
