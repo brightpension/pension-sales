@@ -172,7 +172,7 @@
   tbody tr:hover td { background: var(--surface2); }
   .td-name { font-weight: 500; white-space: nowrap; }
   .td-muted { color: var(--text2); }
-  .td-content { max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; color: var(--blue); text-decoration: underline dotted; }
+  .td-content { max-width: 340px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; color: var(--blue); text-decoration: underline dotted; }
   .td-content:hover { opacity: 0.75; }
 
   /* ── 내용 전체보기 모달 ── */
@@ -608,9 +608,9 @@
           <table>
             <thead>
               <tr>
-                <th>주차</th><th>날짜</th><th>소속</th><th>이름</th>
+                <th style="width:70px">주차</th><th style="width:76px">날짜</th><th>소속</th><th>이름</th>
                 <th>단체구분</th><th>제도</th><th>단체명</th><th>담당자</th><th>활동목적</th><th>방식</th>
-                <th>내용</th><th>점수</th>
+                <th>내용</th>
               </tr>
             </thead>
             <tbody id="log-table"></tbody>
@@ -631,9 +631,9 @@
           <table>
             <thead>
               <tr>
-                <th>단체명</th><th>총활동</th><th>신규발굴</th><th>펀드상담</th><th>단체관리</th>
+                <th>단체명</th><th>영업팀장</th><th>총활동</th><th>신규발굴</th><th>펀드상담</th><th>단체관리</th>
                 <th>방문</th><th>중식</th><th>석식</th><th>기타</th>
-                <th>영업팀장</th><th>최근활동일</th>
+                <th>최근활동일</th>
               </tr>
             </thead>
             <tbody id="org-table"></tbody>
@@ -972,13 +972,13 @@ function renderLogTable() {
   const page  = filteredLog.slice(start, start + LOG_PAGE_SIZE);
   const tbody = document.getElementById('log-table');
   if (!page.length) {
-    tbody.innerHTML = `<tr><td colspan="12"><div class="empty-state"><div class="empty-state-icon">📭</div><div class="empty-state-text">데이터가 없습니다</div></div></td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="11"><div class="empty-state"><div class="empty-state-icon">📭</div><div class="empty-state-text">데이터가 없습니다</div></div></td></tr>`;
     return;
   }
   tbody.innerHTML = page.map(r => `
     <tr>
-      <td style="white-space:nowrap">${weekStrToLabel(r.week)}</td>
-      <td style="white-space:nowrap">${r.actDate}</td>
+      <td style="white-space:nowrap;width:70px">${weekStrToLabel(r.week)}</td>
+      <td style="white-space:nowrap;width:76px">${r.actDate}</td>
       <td class="td-muted" style="white-space:nowrap;overflow:hidden;max-width:70px;text-overflow:ellipsis">${r.org}</td>
       <td class="td-name">${r.name}</td>
       <td>${r.category ? `<span class="badge badge-method">${esc(r.category)}</span>` : '—'}</td>
@@ -988,7 +988,6 @@ function renderLogTable() {
       <td><span class="badge ${PBMAP[r.purpose] || ''}">${r.purpose || '—'}</span></td>
       <td><span class="badge badge-method">${r.method || '—'}</span></td>
       <td class="td-content" title="${esc(r.content)}" onclick="showContentModal(this.title, '${esc(r.name)}', '${esc(r.actDate)}')">${esc(r.content) || '—'}</td>
-      <td style="font-weight:600;color:var(--blue);white-space:nowrap">+${r.score}점</td>
     </tr>`).join('');
 }
 
@@ -1028,6 +1027,7 @@ function renderOrgTable() {
   tbody.innerHTML = orgs.map(d => `
     <tr>
       <td class="td-name">${esc(d.orgName)}</td>
+      <td class="td-muted" style="font-size:12px">${[...d.managers].join(', ')}</td>
       <td style="font-weight:600;text-align:center">${d.total}</td>
       <td style="text-align:center;color:var(--blue)">${d.new_}</td>
       <td style="text-align:center;color:var(--green)">${d.fund}</td>
@@ -1036,7 +1036,6 @@ function renderOrgTable() {
       <td style="text-align:center">${d.lunch}</td>
       <td style="text-align:center">${d.dinner}</td>
       <td style="text-align:center">${d.etc}</td>
-      <td class="td-muted" style="font-size:12px">${[...d.managers].join(', ')}</td>
       <td style="white-space:nowrap">${d.lastDate || '—'}</td>
     </tr>`).join('');
 }
@@ -1044,8 +1043,8 @@ function renderOrgTable() {
 function exportOrgCSV() {
   const orgs = computeOrgSummary();
   if (!orgs.length) { alert('데이터가 없습니다.'); return; }
-  const header = ['단체명','총활동','신규발굴','펀드상담','단체관리','방문','중식','석식','기타','영업팀장','최근활동일'];
-  const rows = orgs.map(d => [d.orgName, d.total, d.new_, d.fund, d.mgmt, d.visit, d.lunch, d.dinner, d.etc, [...d.managers].join(', '), d.lastDate]);
+  const header = ['단체명','영업팀장','총활동','신규발굴','펀드상담','단체관리','방문','중식','석식','기타','최근활동일'];
+  const rows = orgs.map(d => [d.orgName, [...d.managers].join(', '), d.total, d.new_, d.fund, d.mgmt, d.visit, d.lunch, d.dinner, d.etc, d.lastDate]);
   exportCSV(header, rows, `단체별현황_${new Date().toLocaleDateString('sv')}.csv`);
 }
 
