@@ -259,7 +259,10 @@
     </div>
     <div class="section">
       <div class="section-label">📅 활동일자</div>
-      <input type="date" id="act-date" class="date-input">
+      <input type="date" id="act-date" class="date-input" onchange="checkDateBlock()">
+      <div id="vacation-block-banner" style="display:none;background:var(--amber-bg);border:1.5px solid #D97706;border-radius:var(--radius);padding:10px 14px;margin-top:8px;font-size:13px;color:var(--amber);font-weight:600">
+        ⚠️ 이 날짜는 '1일 휴가'로 등록되어 있어 활동을 입력할 수 없습니다.
+      </div>
     </div>
     <div class="section">
       <div class="section-label">🎯 활동목적 (WHY)</div>
@@ -421,6 +424,7 @@ function esc(s) {
 function todayStr() { return new Date().toLocaleDateString('sv'); }
 document.getElementById('act-date').value = todayStr();
 document.getElementById('att-date').value = todayStr();
+checkDateBlock();
 
 function getWeekStr(dateStr) {
   const d = new Date(String(dateStr || '').slice(0,10) + 'T00:00:00');
@@ -493,7 +497,21 @@ function updateScore() {
   // 활동 입력 화면의 점수 미리보기 카드는 제거됨 (제출 후 완료 화면에서 점수 확인 가능)
 }
 function checkReady() {
-  document.getElementById('submit-btn').disabled = !(NAME && KEY && selPurpose && selMethod);
+  document.getElementById('submit-btn').disabled = !(NAME && KEY && selPurpose && selMethod) || dateBlocked;
+}
+
+// ── 휴가일 활동 입력 차단 (1일 휴가로 등록된 날짜는 활동 등록 불가) ──
+let dateBlocked = false;
+async function checkDateBlock() {
+  const dateStr = document.getElementById('act-date').value;
+  const banner  = document.getElementById('vacation-block-banner');
+  if (!dateStr || !NAME || !KEY) { dateBlocked = false; banner.style.display = 'none'; checkReady(); return; }
+  try {
+    const rows = await fetch(SCRIPT_URL + '?action=getAttendance&name=' + encodeURIComponent(NAME) + '&key=' + encodeURIComponent(KEY) + '&t=' + Date.now()).then(r => r.json());
+    dateBlocked = Array.isArray(rows) && rows.some(r => r.name === NAME && String(r.date) === dateStr && r.label === '1일 휴가');
+  } catch(e) { dateBlocked = false; }
+  banner.style.display = dateBlocked ? 'block' : 'none';
+  checkReady();
 }
 
 // ── 단체명 자동완성 ──
@@ -633,6 +651,7 @@ flushPendingQueue();
 
 async function submitForm() {
   if (!NAME || !KEY || !selPurpose || !selMethod) return;
+  if (dateBlocked) { alert("이 날짜는 '1일 휴가'로 등록되어 있어 활동을 입력할 수 없습니다."); return; }
   const btn = document.getElementById('submit-btn');
   btn.disabled = true;
   btn.innerHTML = '<div class="spinner"></div> ' + (editMode ? '저장 중...' : '제출 중...');
@@ -723,7 +742,7 @@ function editActivity(data) {
   document.getElementById('edit-banner').style.display = 'flex';
   document.getElementById('submit-btn').innerHTML = '✅ 수정 저장';
   document.getElementById('submit-hint').textContent = '변경된 내용으로 기록이 업데이트됩니다';
-  updateScore(); checkReady();
+  updateScore(); checkReady(); checkDateBlock();
   switchTab('input');
   window.scrollTo({top:0,behavior:'smooth'});
 }
