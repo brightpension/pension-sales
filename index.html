@@ -866,7 +866,7 @@ async function loadData() {
         content:    r.content || '',
         contact:    r.contact || '',
         score:      r.score || 0,
-        role:       rosterMap[r.name]?.role || '',
+        role:       (rosterMap[r.name] && rosterMap[r.name].role) || '',
       })).filter(r => r.name && r.actDate);
     }
     allLogData = activities;
@@ -1015,8 +1015,10 @@ function renderLogTable() {
 
 // ── 단체별현황 ──
 function computeOrgSummary() {
-  const orgFilter  = document.getElementById('of-org')?.value  || '';
-  const nameFilter = document.getElementById('of-name')?.value || '';
+  const ofOrgEl    = document.getElementById('of-org');
+  const ofNameEl   = document.getElementById('of-name');
+  const orgFilter  = (ofOrgEl  && ofOrgEl.value)  || '';
+  const nameFilter = (ofNameEl && ofNameEl.value) || '';
   const map = {};
   allLogData.forEach(a => {
     if (!a.orgName) return;
@@ -1126,7 +1128,8 @@ function exportTableCSV() {
   );
   if (!filtered.length) { alert('다운로드할 데이터가 없습니다.'); return; }
   const header = ['이름', '소속', '점수', '목표', '달성률(%)', '신규발굴', '펀드상담', '단체관리', '달성여부'];
-  const rows = filtered.map(d => [d.name, d.org, d.score, d.effectiveTarget ?? '—', d.rate ?? '—', d.new_ ?? '—', d.fund ?? '—', d.mgmt ?? '—', d.pass ? '달성' : d.pass === null ? '—' : '미달']);
+  const nz = (v, fallback) => (v === null || v === undefined) ? fallback : v;
+  const rows = filtered.map(d => [d.name, d.org, d.score, nz(d.effectiveTarget, '—'), nz(d.rate, '—'), nz(d.new_, '—'), nz(d.fund, '—'), nz(d.mgmt, '—'), d.pass ? '달성' : d.pass === null ? '—' : '미달']);
   exportCSV(header, rows, `주간현황_${getCurrentWeek()}_${new Date().toLocaleDateString('sv')}.csv`);
 }
 
@@ -1318,7 +1321,7 @@ function renderOrgByRM(data, containerId, useGrid) {
   const targets = data.filter(d => d.role === '팀장');
   const orgStats = {};
   targets.forEach(d => {
-    if (!orgStats[d.org]) orgStats[d.org] = { pass: 0, total: 0, rm: rosterMap[d.name]?.rm || '기타' };
+    if (!orgStats[d.org]) orgStats[d.org] = { pass: 0, total: 0, rm: (rosterMap[d.name] && rosterMap[d.name].rm) || '기타' };
     orgStats[d.org].total++;
     if (d.pass) orgStats[d.org].pass++;
   });
