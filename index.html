@@ -576,7 +576,6 @@
       <div class="section">
         <div class="section-header">
           <span class="section-title">활동 내역</span>
-          <span class="section-sub" id="log-week-label"></span>
           <button class="btn-csv" onclick="exportLogCSV()">⬇ 전체 CSV</button>
         </div>
 
@@ -1544,6 +1543,7 @@ function switchView(view, from) {
   document.getElementById('page-title').textContent = VIEW_TITLES[view];
 
   document.getElementById('metrics-row').style.display = (view === 'config' || view === 'orgs') ? 'none' : 'grid';
+  document.getElementById('week-select').style.display = (view === 'log' || view === 'orgs') ? 'none' : '';
   updateWeekLabels();
 
   if (view === 'overview') {
@@ -1566,7 +1566,7 @@ function switchView(view, from) {
 // ── 주차 레이블 공통 업데이트 ──
 function updateWeekLabels() {
   const label = weekStrToLabel(getCurrentWeek());
-  ['overview-week-label', 'table-week-label', 'log-week-label'].forEach(id => {
+  ['overview-week-label', 'table-week-label'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.textContent = label;
   });
