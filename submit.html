@@ -800,7 +800,7 @@ async function loadRecords() {
       rowCache.set(r.submitTime, {
         submitTime: r.submitTime, rowId: r.rowId || '', actDate: r.actDate, category: r.category,
         orgName: r.orgName, scheme: r.scheme, purpose: r.purpose,
-        method: r.method, content: r.content, score: r.score
+        method: r.method, content: r.content, contact: r.contact || '', score: r.score
       });
       const extras = [
         r.orgName ? `🏢 ${esc(r.orgName)}` : '',
