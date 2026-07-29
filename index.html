@@ -312,18 +312,6 @@
   .empty-state-text { font-size: 14px; }
   .empty-state-sub { font-size: 12px; margin-top: 6px; }
 
-  /* ── 요약 카드 (로그뷰) ── */
-  .log-summary { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; }
-  .log-sum-card {
-    background: var(--surface); border: 1px solid var(--border);
-    border-radius: var(--radius); padding: 10px 16px; min-width: 90px;
-  }
-  .log-sum-val { font-size: 20px; font-weight: 700; }
-  .log-sum-lbl { font-size: 11px; color: var(--text3); }
-  .log-sum-card.blue .log-sum-val  { color: var(--blue); }
-  .log-sum-card.green .log-sum-val { color: var(--green); }
-  .log-sum-card.amber .log-sum-val { color: var(--amber); }
-
   /* ── 모바일 전용 개요 카드 ── */
   .mobile-hero { display: none; }
   .hero-rate {
@@ -404,11 +392,6 @@
     .att-cards { grid-template-columns: 1fr; }
 
     .config-section { max-width: 100%; }
-
-    .log-summary { gap: 6px; }
-    .log-sum-card { padding: 8px 10px; min-width: 60px; }
-    .log-sum-val { font-size: 16px; }
-    .log-sum-lbl { font-size: 10px; }
 
     .table-wrap table { min-width: 560px; }
     .table-wrap.log-table table { min-width: 680px; }
@@ -597,15 +580,6 @@
           <button class="btn-csv" onclick="exportLogCSV()">⬇ 전체 CSV</button>
         </div>
 
-        <!-- 요약 카드 -->
-        <div class="log-summary" id="log-summary">
-          <div class="log-sum-card blue"><div class="log-sum-val" id="ls-total">—</div><div class="log-sum-lbl">전체 건수</div></div>
-          <div class="log-sum-card blue"><div class="log-sum-val" id="ls-score">—</div><div class="log-sum-lbl">합산 점수</div></div>
-          <div class="log-sum-card green"><div class="log-sum-val" id="ls-new">—</div><div class="log-sum-lbl">신규발굴</div></div>
-          <div class="log-sum-card amber"><div class="log-sum-val" id="ls-fund">—</div><div class="log-sum-lbl">펀드상담</div></div>
-          <div class="log-sum-card"><div class="log-sum-val" id="ls-mgmt" style="color:var(--text)">—</div><div class="log-sum-lbl">단체관리</div></div>
-          <div class="log-sum-card"><div class="log-sum-val" id="ls-people" style="color:var(--text)">—</div><div class="log-sum-lbl">참여인원</div></div>
-        </div>
 
         <!-- 필터 -->
         <div class="filter-row">
@@ -635,7 +609,7 @@
             <thead>
               <tr>
                 <th>주차</th><th>날짜</th><th>소속</th><th>이름</th>
-                <th>단체구분</th><th>제도</th><th>단체명</th><th>활동목적</th><th>방식</th>
+                <th>단체구분</th><th>제도</th><th>단체명</th><th>담당자</th><th>활동목적</th><th>방식</th>
                 <th>내용</th><th>점수</th>
               </tr>
             </thead>
@@ -883,6 +857,7 @@ async function loadData() {
         purpose:    r.purpose || '',
         method:     r.method || '',
         content:    r.content || '',
+        contact:    r.contact || '',
         score:      r.score || 0,
         role:       rosterMap[r.name]?.role || '',
       })).filter(r => r.name && r.actDate);
@@ -979,7 +954,6 @@ function applyLogFilter() {
     return true;
   }).reverse();
   logPage = 1;
-  renderLogSummary();
   renderLogTable();
   renderLogPagination();
 }
@@ -990,22 +964,6 @@ function clearLogFilter() {
   applyLogFilter();
 }
 
-// ── 로그 요약 ──
-function renderLogSummary() {
-  const total  = filteredLog.length;
-  const score  = filteredLog.reduce((s, r) => s + r.score, 0);
-  const 신규   = filteredLog.filter(r => r.purpose === '신규발굴').length;
-  const 펀드   = filteredLog.filter(r => r.purpose === '펀드상담').length;
-  const 단체   = filteredLog.filter(r => r.purpose === '단체관리').length;
-  const people = new Set(filteredLog.map(r => r.name)).size;
-  document.getElementById('ls-total').textContent  = total + '건';
-  document.getElementById('ls-score').textContent  = score + '점';
-  document.getElementById('ls-new').textContent    = 신규 + '건';
-  document.getElementById('ls-fund').textContent   = 펀드 + '건';
-  document.getElementById('ls-mgmt').textContent   = 단체 + '건';
-  document.getElementById('ls-people').textContent = people + '명';
-}
-
 // ── 로그 테이블 ──
 const PBMAP = { 신규발굴: 'badge-p0', 펀드상담: 'badge-p1', 단체관리: 'badge-p2' };
 
@@ -1014,7 +972,7 @@ function renderLogTable() {
   const page  = filteredLog.slice(start, start + LOG_PAGE_SIZE);
   const tbody = document.getElementById('log-table');
   if (!page.length) {
-    tbody.innerHTML = `<tr><td colspan="11"><div class="empty-state"><div class="empty-state-icon">📭</div><div class="empty-state-text">데이터가 없습니다</div></div></td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="12"><div class="empty-state"><div class="empty-state-icon">📭</div><div class="empty-state-text">데이터가 없습니다</div></div></td></tr>`;
     return;
   }
   tbody.innerHTML = page.map(r => `
@@ -1026,6 +984,7 @@ function renderLogTable() {
       <td>${r.category ? `<span class="badge badge-method">${esc(r.category)}</span>` : '—'}</td>
       <td>${r.scheme   ? `<span class="badge badge-method">${esc(r.scheme)}</span>`   : '—'}</td>
       <td style="white-space:nowrap;max-width:60px;overflow:hidden;text-overflow:ellipsis" title="${esc(r.orgName)}">${r.orgName ? esc(r.orgName).slice(0,5) + (r.orgName.length > 5 ? '…' : '') : '—'}</td>
+      <td class="td-muted" style="white-space:nowrap;max-width:70px;overflow:hidden;text-overflow:ellipsis" title="${esc(r.contact)}">${r.contact ? esc(r.contact) : '—'}</td>
       <td><span class="badge ${PBMAP[r.purpose] || ''}">${r.purpose || '—'}</span></td>
       <td><span class="badge badge-method">${r.method || '—'}</span></td>
       <td class="td-content" title="${esc(r.content)}" onclick="showContentModal(this.title, '${esc(r.name)}', '${esc(r.actDate)}')">${esc(r.content) || '—'}</td>
@@ -1129,8 +1088,8 @@ function exportCSV(header, rows, filename) {
 
 function exportLogCSV() {
   if (!filteredLog.length) { alert('다운로드할 데이터가 없습니다.'); return; }
-  const header = ['주차','날짜','소속','이름','단체구분','제도','단체명','활동목적','활동방식','내용','점수'];
-  const rows = filteredLog.map(r => [weekStrToLabel(r.week), r.actDate, r.org, r.name, r.category, r.scheme, r.orgName, r.purpose, r.method, r.content, r.score]);
+  const header = ['주차','날짜','소속','이름','단체구분','제도','단체명','담당자','활동목적','활동방식','내용','점수'];
+  const rows = filteredLog.map(r => [weekStrToLabel(r.week), r.actDate, r.org, r.name, r.category, r.scheme, r.orgName, r.contact, r.purpose, r.method, r.content, r.score]);
   exportCSV(header, rows, `활동일지_${new Date().toLocaleDateString('sv')}.csv`);
 }
 
