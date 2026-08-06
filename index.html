@@ -232,30 +232,23 @@
 
   /* ── 필터 바 ── */
   .filter-row {
-    display: flex; gap: 8px; flex-wrap: wrap; align-items: center;
-    margin-bottom: 14px;
-  }
-  .filter-row select, .filter-row input {
-    padding: 6px 10px; border-radius: var(--radius-sm);
-    border: 1px solid var(--border); background: var(--surface);
-    font-size: 12px; color: var(--text); font-family: inherit;
-  }
-  .filter-row input { min-width: 160px; }
-  .filter-row input:focus, .filter-row select:focus { outline: none; border-color: var(--blue); }
-
-  .att-admin-row {
     display: flex; gap: 8px; flex-wrap: wrap; align-items: stretch;
     margin-bottom: 14px;
   }
-  .att-admin-row select, .att-admin-row input, .att-admin-row button {
+  .filter-row select, .filter-row input, .filter-row button {
     height: 34px; box-sizing: border-box;
     padding: 0 12px; border-radius: var(--radius-sm);
     font-size: 13px; font-family: inherit;
   }
-  .att-admin-row select, .att-admin-row input {
+  .filter-row select, .filter-row input {
     border: 1px solid var(--border); background: var(--surface); color: var(--text);
   }
-  .att-admin-row select:focus, .att-admin-row input:focus { outline: none; border-color: var(--blue); }
+  .filter-row button {
+    border: 1px solid var(--border); background: var(--surface); color: var(--text2);
+    cursor: pointer; white-space: nowrap;
+  }
+  .filter-row input[type="text"], .filter-row input[type="search"] { min-width: 160px; }
+  .filter-row input:focus, .filter-row select:focus { outline: none; border-color: var(--blue); }
   #aa-name  { width: 130px; }
   #aa-date  { width: 150px; }
   #aa-type  { width: 170px; }
@@ -616,7 +609,7 @@
             <option value="기타">기타</option>
           </select>
           <input type="text" id="lf-search" placeholder="🔍 단체명 / 제도 / 내용" oninput="applyLogFilter()">
-          <button style="padding:6px 12px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);color:var(--text2);cursor:pointer;font-family:inherit;font-size:12px" onclick="clearLogFilter()">초기화</button>
+          <button onclick="clearLogFilter()">초기화</button>
         </div>
 
         <!-- 로그 테이블 -->
@@ -648,7 +641,7 @@
         <div class="filter-row">
           <select id="of-org" onchange="renderOrgTable()"><option value="">단체명</option></select>
           <select id="of-name" onchange="renderOrgTable()"><option value="">영업팀장</option></select>
-          <button style="padding:6px 12px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);color:var(--text2);cursor:pointer;font-family:inherit;font-size:12px" onclick="clearOrgFilter()">초기화</button>
+          <button onclick="clearOrgFilter()">초기화</button>
         </div>
 
         <div class="table-wrap">
@@ -673,7 +666,7 @@
           <span class="section-title">근태 등록 (관리자)</span>
           <span class="section-sub">팀장이 직접 등록한 것과 동일하게 반영됩니다</span>
         </div>
-        <div class="att-admin-row">
+        <div class="filter-row">
           <select id="aa-name"><option value="">팀장 선택</option></select>
           <input type="date" id="aa-date">
           <select id="aa-type">
@@ -959,7 +952,9 @@ function buildWeeklySummary(activities, roster, weekList) {
 
 // ── 로그 필터 옵션 ──
 function populateLogFilters() {
-  const logWeeks = [...new Set(allLogData.map(r => r.week))].sort().reverse();
+  const logWeekSet = new Set(allLogData.map(r => r.week));
+  logWeekSet.add(getWeekStr(todayStr()));
+  const logWeeks = [...logWeekSet].sort().reverse();
   const logOrgs  = [...new Set(allLogData.map(r => r.org))].sort();
   const logNames = [...new Set(allLogData.map(r => r.name))].sort();
   // 주차는 값은 "26-25" 유지, 표시는 "26년 6월 3주차"
