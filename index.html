@@ -243,6 +243,23 @@
   .filter-row input { min-width: 160px; }
   .filter-row input:focus, .filter-row select:focus { outline: none; border-color: var(--blue); }
 
+  .att-admin-row {
+    display: flex; gap: 8px; flex-wrap: wrap; align-items: stretch;
+    margin-bottom: 14px;
+  }
+  .att-admin-row select, .att-admin-row input, .att-admin-row button {
+    height: 34px; box-sizing: border-box;
+    padding: 0 12px; border-radius: var(--radius-sm);
+    font-size: 13px; font-family: inherit;
+  }
+  .att-admin-row select, .att-admin-row input {
+    border: 1px solid var(--border); background: var(--surface); color: var(--text);
+  }
+  .att-admin-row select:focus, .att-admin-row input:focus { outline: none; border-color: var(--blue); }
+  #aa-name  { width: 130px; }
+  #aa-date  { width: 150px; }
+  #aa-type  { width: 170px; }
+
   /* ── 근태 관리 ── */
   .att-cards { display: flex; flex-direction: column; gap: 16px; }
   .att-org-group {}
@@ -656,7 +673,7 @@
           <span class="section-title">근태 등록 (관리자)</span>
           <span class="section-sub">팀장이 직접 등록한 것과 동일하게 반영됩니다</span>
         </div>
-        <div class="filter-row">
+        <div class="att-admin-row">
           <select id="aa-name"><option value="">팀장 선택</option></select>
           <input type="date" id="aa-date">
           <select id="aa-type">
@@ -669,7 +686,7 @@
             <option value="오전 출장|0">오전 출장 (기록만)</option>
             <option value="오후 출장|0">오후 출장 (기록만)</option>
           </select>
-          <button class="btn-primary" style="padding:6px 16px" onclick="submitAdminAttendance()">등록</button>
+          <button class="btn-primary" onclick="submitAdminAttendance()">등록</button>
         </div>
       </div>
       <div class="section">
