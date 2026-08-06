@@ -653,8 +653,28 @@
     <div id="view-attendance" class="view">
       <div class="section">
         <div class="section-header">
+          <span class="section-title">근태 등록 (관리자)</span>
+          <span class="section-sub">팀장이 직접 등록한 것과 동일하게 반영됩니다</span>
+        </div>
+        <div class="filter-row">
+          <select id="aa-name"><option value="">팀장 선택</option></select>
+          <input type="date" id="aa-date">
+          <select id="aa-type">
+            <option value="1일 휴가|4">1일 휴가 (−4점)</option>
+            <option value="오전 반차|2">오전 반차 (−2점)</option>
+            <option value="오후 반차|2">오후 반차 (−2점)</option>
+            <option value="오전 반반차|1">오전 반반차 (−1점)</option>
+            <option value="오후 반반차|1">오후 반반차 (−1점)</option>
+            <option value="1일 출장|0">1일 출장 (기록만)</option>
+            <option value="오전 출장|0">오전 출장 (기록만)</option>
+            <option value="오후 출장|0">오후 출장 (기록만)</option>
+          </select>
+          <button class="btn-primary" style="padding:6px 16px" onclick="submitAdminAttendance()">등록</button>
+        </div>
+      </div>
+      <div class="section">
+        <div class="section-header">
           <span class="section-title">근태 현황</span>
-          <span class="section-sub">근태는 팀장 개인 페이지에서 셀프 등록 · 여기서는 조회만 가능</span>
         </div>
         <div class="att-cards" id="att-cards">
           <div class="att-empty">이번 주 등록된 근태 없음</div>
@@ -883,6 +903,7 @@ async function loadData() {
     populateLogFilters();
     applyLogFilter();
     populateOrgFilters();
+    populateAttNameSelect();
 
     const now = new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
     document.getElementById('sync-status').textContent = `${now} 업데이트`;
@@ -1245,6 +1266,50 @@ async function fetchAttendance() {
   }
 }
 
+// ── 근태 등록/삭제 (관리자) ──
+async function postFormAdmin(paramsObj) {
+  try {
+    const res  = await fetch(SCRIPT_URL, { method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body: new URLSearchParams({ ...paramsObj, admin: ADMIN_KEY }) });
+    const json = await res.json();
+    return (json && json.ok) ? { ok:true } : { ok:false, error: (json && json.error) || '서버에서 저장 실패로 응답' };
+  } catch(e) { return { ok:false, error:'network' }; }
+}
+
+function populateAttNameSelect() {
+  const names = Object.values(rosterMap).filter(m => m.role === '팀장').map(m => m.name).sort((a, b) => a.localeCompare(b, 'ko'));
+  setSelectOptions('aa-name', names, '팀장 선택');
+  const dateEl = document.getElementById('aa-date');
+  if (dateEl && !dateEl.value) dateEl.value = todayStr();
+}
+
+async function submitAdminAttendance() {
+  const name = document.getElementById('aa-name').value;
+  const date = document.getElementById('aa-date').value;
+  const [label, deduct] = document.getElementById('aa-type').value.split('|');
+  if (!name || !date) { alert('팀장과 날짜를 선택해 주세요.'); return; }
+  const result = await postFormAdmin({ action:'addAttendance', name, date, label, deduct });
+  if (result.ok) {
+    await fetchAttendance();
+    renderAttCards();
+  } else {
+    alert('등록 중 오류가 발생했습니다' + (result.error && result.error !== 'network' ? (': ' + result.error) : '') + '. 다시 시도해 주세요.');
+  }
+}
+
+document.getElementById('att-cards').addEventListener('click', async (e) => {
+  const btn = e.target.closest('.btn-del-att');
+  if (!btn) return;
+  const { name, date, label } = btn.dataset;
+  if (!confirm(`${name}님의 '${label}' (${date}) 기록을 삭제할까요?`)) return;
+  const result = await postFormAdmin({ action:'removeAttendance', name, date, label });
+  if (result.ok) {
+    await fetchAttendance();
+    renderAttCards();
+  } else {
+    alert('삭제 중 오류가 발생했습니다' + (result.error && result.error !== 'network' ? (': ' + result.error) : '') + '. 다시 시도해 주세요.');
+  }
+});
+
 // ── 근태 차감 ──
 function getDeduct(name, week) {
   const key = name + '_' + week;
@@ -1502,6 +1567,7 @@ function renderAttCards() {
                   <span class="att-item-label">${fmtAttDate(a.date)} · ${a.label}</span>
                   <div class="att-item-right">
                     <span class="att-deduct">−${a.deduct}점</span>
+                    <button class="btn-del-att" data-name="${esc(name)}" data-date="${esc(a.date)}" data-label="${esc(a.label)}" style="margin-left:8px;padding:3px 8px;font-size:11px;border:1px solid var(--border);border-radius:5px;background:var(--surface);color:var(--text3);cursor:pointer;font-family:inherit">삭제</button>
                   </div>
                 </div>`).join('')}` : ''}
             ${tripItems.length ? `
@@ -1511,6 +1577,7 @@ function renderAttCards() {
                   <span class="att-item-label">${fmtAttDate(a.date)} · ${a.label}</span>
                   <div class="att-item-right">
                     <span class="att-record-only">기록</span>
+                    <button class="btn-del-att" data-name="${esc(name)}" data-date="${esc(a.date)}" data-label="${esc(a.label)}" style="margin-left:8px;padding:3px 8px;font-size:11px;border:1px solid var(--border);border-radius:5px;background:var(--surface);color:var(--text3);cursor:pointer;font-family:inherit">삭제</button>
                   </div>
                 </div>`).join('')}` : ''}
           </div>`;
