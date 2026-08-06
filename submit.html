@@ -375,7 +375,10 @@
   </div>
 
   <div style="margin-top:24px">
-    <div style="font-size:12px;font-weight:700;color:var(--gray);margin-bottom:8px">내 근태 기록 전체</div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+      <div style="font-size:12px;font-weight:700;color:var(--gray)">내 근태 기록</div>
+      <select id="att-month-select" onchange="renderAttRecordsForMonth()" style="font-size:12px;border:1px solid var(--border);border-radius:6px;padding:4px 8px;font-family:inherit;color:var(--text)"></select>
+    </div>
     <div id="att-records"></div>
   </div>
 </div>
@@ -934,6 +937,8 @@ async function submitAtt() {
     : ('등록에 실패했습니다: ' + result.error + '\n하단 배너의 재시도 버튼으로 다시 시도할 수 있어요.'));
 }
 
+let allAttRecords = [];
+
 async function loadAttRecords() {
   const el = document.getElementById('att-records');
   el.innerHTML = '<div class="loading-wrap"><div class="ls"></div></div>';
@@ -941,26 +946,47 @@ async function loadAttRecords() {
   try {
     const res  = await fetch(SCRIPT_URL + '?action=getAttendance&name=' + encodeURIComponent(NAME) + '&key=' + encodeURIComponent(KEY) + '&t=' + Date.now());
     const rows = await res.json();
-    // 이번 주만 보여주면 다른 주에 등록한 걸 본인이 찾아서 못 지우므로, 전체를 최신순으로 보여준다.
-    const mine = Array.isArray(rows) ? [...rows].sort((a, b) => String(b.date).localeCompare(String(a.date))) : [];
-    if (!mine.length) {
-      el.innerHTML = '<div class="no-data"><div class="no-icon">✅</div>등록된 근태 기록이 없습니다</div>';
-      return;
-    }
-    el.innerHTML = mine.map(r => {
-      const isVac = Number(r.deduct) > 0;
-      return `<div class="att-item">
-        <div class="att-item-left">
-          <span class="att-item-date">📅 ${esc(r.date)}</span>
-          <span class="att-item-label ${isVac?'vac':'trip'}">${esc(r.label)}</span>
-        </div>
-        <div style="display:flex;align-items:center;gap:10px">
-          <span class="att-deduct ${isVac?'':'none'}">${isVac?`−${r.deduct}점`:'기록만'}</span>
-          <button class="btn-del-act" style="width:auto;padding:5px 10px" data-date="${esc(r.date)}" data-label="${esc(r.label)}" data-week="${esc(r.week)}">삭제</button>
-        </div>
-      </div>`;
+    // 데이터는 전체를 받아두고, 화면 표시만 월별로 나눠서 보여준다 (기록이 계속 쌓여도 목록이 안 길어지게).
+    allAttRecords = Array.isArray(rows) ? [...rows].sort((a, b) => String(b.date).localeCompare(String(a.date))) : [];
+
+    const curMonth = todayStr().slice(0, 7);
+    const months = [...new Set(allAttRecords.map(r => String(r.date).slice(0, 7)))];
+    if (!months.includes(curMonth)) months.push(curMonth);
+    months.sort().reverse();
+
+    const sel = document.getElementById('att-month-select');
+    const keep = months.includes(sel.value) ? sel.value : curMonth;
+    sel.innerHTML = months.map(m => {
+      const [y, mo] = m.split('-');
+      const label = m === curMonth ? `${y}년 ${Number(mo)}월 (이번달)` : `${y}년 ${Number(mo)}월`;
+      return `<option value="${m}" ${m === keep ? 'selected' : ''}>${label}</option>`;
     }).join('');
+
+    renderAttRecordsForMonth();
   } catch(e) { el.innerHTML = '<div class="no-data"><div class="no-icon">⚠️</div>불러오기 실패</div>'; }
+}
+
+function renderAttRecordsForMonth() {
+  const el    = document.getElementById('att-records');
+  const month = document.getElementById('att-month-select').value;
+  const mine  = allAttRecords.filter(r => String(r.date).slice(0, 7) === month);
+  if (!mine.length) {
+    el.innerHTML = '<div class="no-data"><div class="no-icon">✅</div>이 달에 등록된 근태 기록이 없습니다</div>';
+    return;
+  }
+  el.innerHTML = mine.map(r => {
+    const isVac = Number(r.deduct) > 0;
+    return `<div class="att-item">
+      <div class="att-item-left">
+        <span class="att-item-date">📅 ${esc(r.date)}</span>
+        <span class="att-item-label ${isVac?'vac':'trip'}">${esc(r.label)}</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px">
+        <span class="att-deduct ${isVac?'':'none'}">${isVac?`−${r.deduct}점`:'기록만'}</span>
+        <button class="btn-del-act" style="width:auto;padding:5px 10px" data-date="${esc(r.date)}" data-label="${esc(r.label)}" data-week="${esc(r.week)}">삭제</button>
+      </div>
+    </div>`;
+  }).join('');
 }
 
 async function deleteAtt(date, label, week) {
