@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>단체 활동 이력</title>
+<meta name="robots" content="noindex, nofollow, noarchive">
+<style>
+  :root {
+    --bg: #f5f5f3;
+    --surface: #ffffff;
+    --surface2: #f0efed;
+    --border: #e0dedd;
+    --text: #1a1a18;
+    --text2: #6b6b68;
+    --text3: #9b9b98;
+    --green: #1a7a5e;
+    --green-bg: #e8f5f0;
+    --amber: #b45309;
+    --amber-bg: #fef3e2;
+    --blue: #1e4fa3;
+    --blue-bg: #eef2fb;
+    --radius: 10px;
+    --radius-sm: 6px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+  }
+  .header {
+    background: #fff; border-bottom: 1px solid var(--border);
+    padding: 14px 20px; display: flex; align-items: center; gap: 10px;
+  }
+  .back-link { color: var(--text2); text-decoration: none; font-size: 20px; }
+  .header-title { font-size: 15px; font-weight: 700; }
+  .page { max-width: 720px; margin: 0 auto; padding: 20px 16px 60px; }
+
+  .org-title { font-size: 20px; font-weight: 700; margin-bottom: 14px; }
+
+  .metrics { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 20px; }
+  .metric { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 14px; }
+  .metric-label { font-size: 11px; color: var(--text3); margin-bottom: 6px; }
+  .metric-value { font-size: 18px; font-weight: 700; }
+
+  .section { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; margin-bottom: 16px; }
+  .section-title { font-size: 13px; font-weight: 700; color: var(--text2); margin-bottom: 12px; }
+
+  .cal-nav { display: flex; align-items: center; justify-content: center; gap: 16px; margin-bottom: 10px; }
+  .cal-nav button { border: 1px solid var(--border); background: var(--surface); border-radius: var(--radius-sm); width: 30px; height: 30px; font-size: 15px; cursor: pointer; }
+  .cal-label { font-size: 14px; font-weight: 700; min-width: 90px; text-align: center; }
+  .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+  .cal-dow { text-align: center; font-size: 11px; color: var(--text3); padding: 4px 0; }
+  .cal-cell { position: relative; text-align: center; font-size: 13px; padding: 8px 0; border-radius: var(--radius-sm); color: var(--text2); }
+  .cal-cell.empty { visibility: hidden; }
+  .cal-cell.has-activity { background: var(--blue-bg); color: var(--blue); font-weight: 700; }
+  .cal-cell .dot { position: absolute; bottom: 3px; left: 50%; transform: translateX(-50%); width: 4px; height: 4px; border-radius: 50%; background: var(--blue); }
+
+  .filter-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .filter-row input[type="date"] { border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 7px 10px; font-size: 13px; font-family: inherit; color: var(--text); background: var(--surface); }
+  .filter-row button { border: 1px solid var(--border); background: var(--surface); border-radius: var(--radius-sm); padding: 7px 12px; font-size: 12px; color: var(--text2); cursor: pointer; font-family: inherit; }
+  .filter-sep { color: var(--text3); font-size: 13px; }
+
+  .history-item { border-bottom: 1px solid var(--border); padding: 12px 0; }
+  .history-item:last-child { border-bottom: none; }
+  .history-top { display: flex; align-items: center; gap: 8px; margin-bottom: 5px; flex-wrap: wrap; }
+  .history-date { font-size: 12px; font-weight: 700; color: var(--text2); }
+  .badge { font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 100px; background: var(--surface2); color: var(--text2); }
+  .history-name { font-size: 13px; font-weight: 600; margin-bottom: 4px; }
+  .history-content { font-size: 13px; color: var(--text2); line-height: 1.5; white-space: pre-wrap; }
+  .empty { text-align: center; padding: 32px; color: var(--text3); font-size: 13px; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <a class="back-link" href="javascript:history.back()">←</a>
+  <div class="header-title">단체 활동 이력</div>
+</div>
+
+<div class="page">
+  <div class="org-title" id="org-title"></div>
+  <div class="metrics" id="org-metrics"></div>
+
+  <div class="section">
+    <div class="section-title">캘린더</div>
+    <div class="cal-nav">
+      <button onclick="changeMonth(-1)">‹</button>
+      <span class="cal-label" id="cal-label"></span>
+      <button onclick="changeMonth(1)">›</button>
+    </div>
+    <div class="cal-grid" id="cal-grid"></div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">기간 조회</div>
+    <div class="filter-row">
+      <input type="date" id="start-date" onchange="renderHistoryList()">
+      <span class="filter-sep">~</span>
+      <input type="date" id="end-date" onchange="renderHistoryList()">
+      <button onclick="clearDateFilter()">초기화</button>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">활동 내역 <span id="history-count"></span></div>
+    <div id="history-list"></div>
+  </div>
+</div>
+
+<script>
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxIYOlk1xXVCuGZAstkjSApzPSB4fo9RCGi0ABtBQ5GTSxkcdnkKPFd2dAzOHKIoN9d/exec';
+
+const params   = new URLSearchParams(location.search);
+const ORG_NAME = params.get('org')   || '';
+const ADMIN_KEY_PARAM = params.get('admin') || '';
+
+let allActivities = [];
+let calYear, calMonth;
+
+function esc(s) {
+  return String(s || '').replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
+}
+
+async function loadOrgHistory() {
+  document.getElementById('org-title').textContent = ORG_NAME || '단체명 없음';
+  try {
+    const res  = await fetch(SCRIPT_URL + '?action=getActivityLog&admin=' + encodeURIComponent(ADMIN_KEY_PARAM) + '&t=' + Date.now());
+    const rows = await res.json();
+    allActivities = (Array.isArray(rows) ? rows : [])
+      .filter(r => r.orgName === ORG_NAME)
+      .sort((a, b) => String(b.actDate).localeCompare(String(a.actDate)));
+  } catch(e) {
+    allActivities = [];
+  }
+  renderHeaderMetrics();
+  initCalendar();
+  renderHistoryList();
+}
+
+function renderHeaderMetrics() {
+  const managers = [...new Set(allActivities.map(a => a.name))].filter(Boolean);
+  const lastDate = allActivities.length ? allActivities[0].actDate : '—';
+  document.getElementById('org-metrics').innerHTML = `
+    <div class="metric"><div class="metric-label">총 활동</div><div class="metric-value">${allActivities.length}건</div></div>
+    <div class="metric"><div class="metric-label">최근 활동일</div><div class="metric-value" style="font-size:15px">${esc(lastDate)}</div></div>
+    <div class="metric"><div class="metric-label">담당 팀장</div><div class="metric-value" style="font-size:13px">${esc(managers.join(', ')) || '—'}</div></div>
+  `;
+}
+
+function initCalendar() {
+  if (allActivities.length) {
+    const d = new Date(allActivities[0].actDate + 'T00:00:00');
+    calYear = d.getFullYear(); calMonth = d.getMonth();
+  } else {
+    const now = new Date();
+    calYear = now.getFullYear(); calMonth = now.getMonth();
+  }
+  renderCalendar();
+}
+
+function changeMonth(delta) {
+  calMonth += delta;
+  if (calMonth < 0)  { calMonth = 11; calYear--; }
+  if (calMonth > 11) { calMonth = 0;  calYear++; }
+  renderCalendar();
+}
+
+function renderCalendar() {
+  const activityDates = new Set(allActivities.map(a => String(a.actDate)));
+  document.getElementById('cal-label').textContent = calYear + '년 ' + (calMonth + 1) + '월';
+
+  const firstDow     = new Date(calYear, calMonth, 1).getDay();
+  const daysInMonth   = new Date(calYear, calMonth + 1, 0).getDate();
+
+  let html = ['일','월','화','수','목','금','토'].map(d => `<div class="cal-dow">${d}</div>`).join('');
+  for (let i = 0; i < firstDow; i++) html += `<div class="cal-cell empty">-</div>`;
+  for (let day = 1; day <= daysInMonth; day++) {
+    const dateStr = calYear + '-' + String(calMonth + 1).padStart(2, '0') + '-' + String(day).padStart(2, '0');
+    const has = activityDates.has(dateStr);
+    html += `<div class="cal-cell ${has ? 'has-activity' : ''}">${day}${has ? '<span class="dot"></span>' : ''}</div>`;
+  }
+  document.getElementById('cal-grid').innerHTML = html;
+}
+
+function clearDateFilter() {
+  document.getElementById('start-date').value = '';
+  document.getElementById('end-date').value = '';
+  renderHistoryList();
+}
+
+function renderHistoryList() {
+  const start = document.getElementById('start-date').value;
+  const end   = document.getElementById('end-date').value;
+  const filtered = allActivities.filter(a =>
+    (!start || String(a.actDate) >= start) && (!end || String(a.actDate) <= end)
+  );
+  document.getElementById('history-count').textContent = `총 ${filtered.length}건`;
+
+  const el = document.getElementById('history-list');
+  if (!filtered.length) {
+    el.innerHTML = '<div class="empty">해당 기간에 활동 기록이 없습니다</div>';
+    return;
+  }
+  el.innerHTML = filtered.map(a => `
+    <div class="history-item">
+      <div class="history-top">
+        <span class="history-date">${esc(a.actDate)}</span>
+        <span class="badge">${esc(a.purpose) || '—'}</span>
+        <span class="badge">${esc(a.method) || '—'}</span>
+      </div>
+      <div class="history-name">${esc(a.name)} · ${esc(a.org)}</div>
+      <div class="history-content">${esc(a.content) || '—'}</div>
+    </div>`).join('');
+}
+
+loadOrgHistory();
+</script>
+</body>
+</html>
