@@ -124,7 +124,6 @@
 
   /* ── 메트릭 카드 ── */
   .metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 24px; }
-  .task-metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 14px; }
   .metric {
     background: var(--surface); border: 1px solid var(--border);
     border-radius: var(--radius); padding: 18px 20px;
@@ -283,24 +282,6 @@
   .att-record-only { color: var(--blue); font-weight: 600; font-size: 11px; background: var(--blue-bg); padding: 1px 6px; border-radius: 4px; }
   .att-empty { text-align: center; padding: 32px; color: var(--text3); font-size: 13px; }
 
-  /* ── 과제관리 (프로토타입) ── */
-  .task-org-group { margin-bottom: 18px; }
-  .task-name-label { font-size: 12px; font-weight: 700; color: var(--text2); margin: 10px 0 8px; }
-  .task-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 10px; }
-  .task-card-admin { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 14px; }
-  .task-card-top { display:flex; align-items:center; gap:6px; margin-bottom: 8px; flex-wrap: wrap; }
-  .badge-type-전략 { background: #F5F3FF; color: #5B21B6; }
-  .badge-type-책무 { background: var(--amber-bg); color: var(--amber); }
-  .badge-status-진행중 { background: var(--blue-bg); color: var(--blue); }
-  .badge-status-보류    { background: var(--border); color: var(--text3); }
-  .badge-status-완료    { background: var(--good-bg, #EAF3EE); color: var(--green); }
-  .task-badge { font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 100px; }
-  .task-card-admin-title { font-size: 13px; font-weight: 600; margin-bottom: 8px; }
-  .task-progress-row { display:flex; align-items:center; gap:8px; }
-  .task-progress-track { flex:1; height:6px; background: var(--border); border-radius:100px; overflow:hidden; }
-  .task-progress-fill { height:100%; background: var(--blue); border-radius:100px; }
-  .task-progress-pct { font-size: 11px; font-weight:700; color: var(--blue); min-width: 30px; text-align:right; }
-  .task-card-meta { font-size: 11px; color: var(--text3); margin-top: 6px; }
 
   /* ── 기준표 ── */
   .ref-table td, .ref-table th { font-size: 12px; }
@@ -396,7 +377,6 @@
 
     /* 메트릭 숨기고 hero로 대체 */
     .metrics { display: none !important; }
-    .task-metrics { grid-template-columns: repeat(2, 1fr); }
     .mobile-hero { display: block; }
 
     /* 데스크탑 개요 섹션 숨기기 (차트, 미달테이블) */
@@ -462,9 +442,6 @@
     </div>
     <div class="nav-item" id="snav-attendance" onclick="switchView('attendance','sidebar')">
       <span class="nav-icon">📅</span> 근태
-    </div>
-    <div class="nav-item" id="snav-tasks" onclick="switchView('tasks','sidebar')">
-      <span class="nav-icon">📋</span> 과제관리 <span style="font-size:10px;color:var(--text3);font-weight:400">(프로토타입)</span>
     </div>
     <div class="sidebar-footer">
       <button class="sync-btn" onclick="loadData()">🔄 데이터 새로고침</button>
@@ -719,34 +696,6 @@
       </div>
     </div>
 
-    <!-- ── 과제관리 뷰 (프로토타입) ── -->
-    <div id="view-tasks" class="view">
-      <div class="section">
-        <div class="section-header">
-          <span class="section-title">과제 현황</span>
-          <span class="section-sub">임원 과제관리보드를 참고한 축소 프로토타입 · 팀장 개인 페이지(tasks.html)에서 등록/업데이트</span>
-          <button class="btn-csv" onclick="exportTaskCSV()">⬇ CSV</button>
-        </div>
-        <div class="task-metrics" id="task-stats-row"></div>
-        <div class="filter-row">
-          <select id="tf-org" onchange="renderTaskBoard()"><option value="">사업단</option></select>
-          <select id="tf-name" onchange="renderTaskBoard()"><option value="">담당자</option></select>
-          <select id="tf-type" onchange="renderTaskBoard()">
-            <option value="">구분</option>
-            <option value="전략">전략과제</option>
-            <option value="책무">책무과제</option>
-          </select>
-          <select id="tf-status" onchange="renderTaskBoard()">
-            <option value="">상태</option>
-            <option value="진행중">진행중</option>
-            <option value="보류">보류</option>
-            <option value="완료">완료</option>
-          </select>
-          <button onclick="clearTaskFilter()">초기화</button>
-        </div>
-        <div id="task-board"><div class="att-empty">데이터 불러오는 중...</div></div>
-      </div>
-    </div>
 
   </main>
 </div>
@@ -768,9 +717,6 @@
   <button class="bottom-nav-btn" id="bnav-attendance" onclick="switchView('attendance','bottom')">
     <span class="bn-icon">📅</span><span>근태</span>
   </button>
-  <button class="bottom-nav-btn" id="bnav-tasks" onclick="switchView('tasks','bottom')">
-    <span class="bn-icon">📋</span><span>과제관리</span>
-  </button>
 </nav>
 
 <script>
@@ -781,7 +727,6 @@ let filteredLog = [];
 let weeks = [];
 let rosterMap = {};
 let attendance = {};
-let allTasks = [];
 let currentDetailTab = 'all';
 let currentView = 'overview';
 let chartInst = null;
@@ -862,8 +807,7 @@ async function loadData() {
     const [rosterRows, logJson] = await Promise.all([
       fetch(SCRIPT_URL + '?action=getRoster&' + ADMIN_QS + '&t=' + Date.now()).then(r => r.json()).catch(() => []),
       fetch(SCRIPT_URL + '?action=getActivityLog&' + ADMIN_QS + '&t=' + Date.now()).then(r => r.json()).catch(() => []),
-      fetchAttendance(),
-      fetchTasks()
+      fetchAttendance()
     ]);
     let roster = [];
     if (Array.isArray(rosterRows) && rosterRows.length) {
@@ -908,7 +852,6 @@ async function loadData() {
     applyLogFilter();
     populateOrgFilters();
     populateAttNameSelect();
-    populateTaskFilters();
 
     const now = new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
     document.getElementById('sync-status').textContent = `${now} 업데이트`;
@@ -1317,129 +1260,6 @@ document.getElementById('att-cards').addEventListener('click', async (e) => {
   }
 });
 
-// ── 과제관리 (프로토타입) ──
-// 상무님 보고용 데모 데이터 — 실제 시트에 데이터가 쌓이기 전까지 화면 시연용으로 채워둠
-function buildDemoTasks_() {
-  const now = new Date();
-  const d = (daysAgo) => { const t = new Date(now.getTime() - daysAgo*24*3600*1000); return t.toISOString().slice(0,16).replace('T',' '); };
-  return [
-    { rowId:'demo-1', name:'이재우', org:'1사업단', title:'우수 대리점 발굴 및 신규 채널 확대', type:'전략', status:'진행중', progress:60, createdAt:d(21), updatedAt:d(2) },
-    { rowId:'demo-2', name:'이재우', org:'1사업단', title:'계약 적합성 점검 체계 고도화',       type:'책무', status:'진행중', progress:35, createdAt:d(18), updatedAt:d(9)  },
-    { rowId:'demo-3', name:'조형준', org:'2사업단', title:'AI 활용 고객 상담 효율화 시범 운영', type:'전략', status:'완료',   progress:100,createdAt:d(30), updatedAt:d(3) },
-    { rowId:'demo-4', name:'조형준', org:'2사업단', title:'보험금 지급심사 적정성 점검',       type:'책무', status:'보류',   progress:20, createdAt:d(25), updatedAt:d(15) }
-  ];
-}
-
-async function fetchTasks() {
-  try {
-    const res = await fetch(SCRIPT_URL + '?action=getTasks&' + ADMIN_QS + '&t=' + Date.now());
-    const rows = await res.json();
-    allTasks = (Array.isArray(rows) && rows.length) ? rows : buildDemoTasks_();
-  } catch(e) {
-    console.warn('과제 API 실패:', e);
-    allTasks = buildDemoTasks_();
-  }
-}
-
-function populateTaskFilters() {
-  const orgs  = [...new Set(allTasks.map(t => t.org))].filter(Boolean).sort();
-  const names = [...new Set(allTasks.map(t => t.name))].filter(Boolean).sort((a, b) => a.localeCompare(b, 'ko'));
-  setSelectOptions('tf-org',  orgs,  '사업단');
-  setSelectOptions('tf-name', names, '담당자');
-}
-
-function clearTaskFilter() {
-  ['tf-org', 'tf-name', 'tf-type', 'tf-status'].forEach(id => document.getElementById(id).value = '');
-  renderTaskBoard();
-}
-
-function computeTaskStats() {
-  const inProgress = allTasks.filter(t => t.status === '진행중');
-  const done   = allTasks.filter(t => t.status === '완료').length;
-  const onHold = allTasks.filter(t => t.status === '보류').length;
-  const now = Date.now();
-  const sevenDays = 7 * 24 * 3600 * 1000;
-  const updatedRecently = inProgress.filter(t => {
-    const ts = new Date(String(t.updatedAt).replace(' ', 'T')).getTime();
-    return !isNaN(ts) && (now - ts) <= sevenDays;
-  }).length;
-  return {
-    total: allTasks.length,
-    inProgress: inProgress.length,
-    done, onHold,
-    updatedRecently,
-    updateRate: inProgress.length ? Math.round(updatedRecently / inProgress.length * 100) : 0
-  };
-}
-
-function getFilteredTasks() {
-  const org    = document.getElementById('tf-org').value;
-  const name   = document.getElementById('tf-name').value;
-  const type   = document.getElementById('tf-type').value;
-  const status = document.getElementById('tf-status').value;
-  return allTasks.filter(t =>
-    (!org    || t.org    === org) &&
-    (!name   || t.name   === name) &&
-    (!type   || t.type   === type) &&
-    (!status || t.status === status)
-  );
-}
-
-function renderTaskBoard() {
-  const s = computeTaskStats();
-  document.getElementById('task-stats-row').innerHTML = `
-    <div class="metric"><div class="metric-label">진행중</div><div class="metric-value">${s.inProgress}</div><div class="metric-sub">전체 ${s.total}건</div></div>
-    <div class="metric metric-green"><div class="metric-label">완료</div><div class="metric-value">${s.done}</div></div>
-    <div class="metric"><div class="metric-label">보류</div><div class="metric-value">${s.onHold}</div></div>
-    <div class="metric metric-green"><div class="metric-label">금주 업데이트율</div><div class="metric-value">${s.updateRate}%</div><div class="metric-sub">${s.updatedRecently}/${s.inProgress}건</div></div>
-  `;
-
-  const board = document.getElementById('task-board');
-  const filtered = getFilteredTasks();
-  if (!filtered.length) {
-    board.innerHTML = `<div class="att-empty">조건에 맞는 과제가 없습니다</div>`;
-    return;
-  }
-
-  const byOrg = {};
-  filtered.forEach(t => {
-    const org = t.org || '기타';
-    if (!byOrg[org]) byOrg[org] = {};
-    const name = t.name || '기타';
-    if (!byOrg[org][name]) byOrg[org][name] = [];
-    byOrg[org][name].push(t);
-  });
-
-  board.innerHTML = Object.entries(byOrg).map(([org, byName]) => `
-    <div class="task-org-group">
-      <div class="att-org-label">📍 ${esc(org)}</div>
-      ${Object.entries(byName).map(([name, tasks]) => `
-        <div class="task-name-label">${esc(name)} · ${tasks.length}건</div>
-        <div class="task-cards">
-          ${tasks.map(t => `
-            <div class="task-card-admin">
-              <div class="task-card-top">
-                <span class="task-badge badge-type-${esc(t.type)}">${esc(t.type)}</span>
-                <span class="task-badge badge-status-${esc(t.status)}">${esc(t.status)}</span>
-              </div>
-              <div class="task-card-admin-title">${esc(t.title)}</div>
-              <div class="task-progress-row">
-                <div class="task-progress-track"><div class="task-progress-fill" style="width:${t.progress}%"></div></div>
-                <span class="task-progress-pct">${t.progress}%</span>
-              </div>
-              <div class="task-card-meta">최근 업데이트 ${esc(t.updatedAt || t.createdAt)}</div>
-            </div>`).join('')}
-        </div>`).join('')}
-    </div>`).join('');
-}
-
-function exportTaskCSV() {
-  const filtered = getFilteredTasks();
-  if (!filtered.length) { alert('다운로드할 데이터가 없습니다.'); return; }
-  const header = ['사업단','담당자','과제명','구분','상태','진척도','등록일시','최근업데이트'];
-  const rows = filtered.map(t => [t.org, t.name, t.title, t.type, t.status, t.progress, t.createdAt, t.updatedAt]);
-  exportCSV(header, rows, `과제현황_${new Date().toLocaleDateString('sv')}.csv`);
-}
 
 // ── 근태 차감 ──
 function getDeduct(name, week) {
@@ -1726,7 +1546,7 @@ function switchDetailTab(tab, el) {
 }
 
 // ── 뷰 전환 ──
-const VIEW_TITLES = { overview: '요약', table: '팀장 현황', log: '활동일지', orgs: '단체 현황', attendance: '근태', tasks: '과제관리' };
+const VIEW_TITLES = { overview: '요약', table: '팀장 현황', log: '활동일지', orgs: '단체 현황', attendance: '근태' };
 
 function switchView(view, from) {
   currentView = view;
@@ -1743,8 +1563,8 @@ function switchView(view, from) {
   document.getElementById('view-' + view).classList.add('active');
   document.getElementById('page-title').textContent = VIEW_TITLES[view];
 
-  document.getElementById('metrics-row').style.display = (view === 'orgs' || view === 'tasks') ? 'none' : 'grid';
-  document.getElementById('week-select').style.display = (view === 'log' || view === 'orgs' || view === 'tasks') ? 'none' : '';
+  document.getElementById('metrics-row').style.display = (view === 'orgs') ? 'none' : 'grid';
+  document.getElementById('week-select').style.display = (view === 'log' || view === 'orgs') ? 'none' : '';
   updateWeekLabels();
 
   if (view === 'overview') {
@@ -1762,7 +1582,6 @@ function switchView(view, from) {
     applyLogFilter();
   }
   if (view === 'orgs')       renderOrgTable();
-  if (view === 'tasks')      renderTaskBoard();
 }
 
 // ── 주차 레이블 공통 업데이트 ──
