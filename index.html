@@ -582,8 +582,8 @@
         <!-- 필터 -->
         <div class="filter-row">
           <select id="lf-week" onchange="applyLogFilter()"><option value="">주차</option></select>
-          <select id="lf-org" onchange="applyLogFilter()"><option value="">사업단</option></select>
-          <select id="lf-name" onchange="applyLogFilter()"><option value="">팀장</option></select>
+          <select id="lf-org" onchange="onLogOrgChange()"><option value="">사업단</option></select>
+          <select id="lf-name" onchange="onLogNameChange()"><option value="">팀장</option></select>
           <select id="lf-purpose" onchange="applyLogFilter()">
             <option value="">목적</option>
             <option value="신규발굴">신규발굴</option>
@@ -954,7 +954,39 @@ function applyLogFilter() {
 function clearLogFilter() {
   ['lf-week', 'lf-org', 'lf-name', 'lf-purpose', 'lf-method'].forEach(id => document.getElementById(id).value = '');
   document.getElementById('lf-search').value = '';
+  narrowNameOptionsByOrg('');
   applyLogFilter();
+}
+
+// ── 사업단 ↔ 팀장 연동 필터 ──
+function narrowNameOptionsByOrg(org) {
+  const names = org
+    ? [...new Set(allLogData.filter(r => r.org === org).map(r => r.name))].sort()
+    : [...new Set(allLogData.map(r => r.name))].sort();
+  setSelectOptions('lf-name', names, '팀장');
+}
+
+function onLogOrgChange() {
+  narrowNameOptionsByOrg(document.getElementById('lf-org').value);
+  applyLogFilter();
+}
+
+function onLogNameChange() {
+  const name = document.getElementById('lf-name').value;
+  if (name) {
+    const rec = allLogData.find(r => r.name === name);
+    if (rec) {
+      document.getElementById('lf-org').value = rec.org;
+      narrowNameOptionsByOrg(rec.org);
+      document.getElementById('lf-name').value = name;
+    }
+  }
+  applyLogFilter();
+}
+
+function filterByName(name) {
+  document.getElementById('lf-name').value = name;
+  onLogNameChange();
 }
 
 // ── 로그 테이블 ──
@@ -973,7 +1005,7 @@ function renderLogTable() {
       <td style="white-space:nowrap;width:70px">${weekStrToLabel(r.week)}</td>
       <td style="white-space:nowrap;width:76px">${r.actDate}</td>
       <td class="td-muted" style="white-space:nowrap;overflow:hidden;max-width:70px;text-overflow:ellipsis">${r.org}</td>
-      <td class="td-name">${r.name}</td>
+      <td class="td-name" style="cursor:pointer;text-decoration:underline;text-decoration-style:dotted" title="클릭하면 이 팀장만 필터링" onclick="filterByName('${esc(r.name)}')">${esc(r.name)}</td>
       <td>${r.category ? `<span class="badge badge-method">${esc(r.category)}</span>` : '—'}</td>
       <td>${r.scheme   ? `<span class="badge badge-method">${esc(r.scheme)}</span>`   : '—'}</td>
       <td style="white-space:nowrap;max-width:60px;overflow:hidden;text-overflow:ellipsis" title="${esc(r.orgName)}">${r.orgName ? esc(r.orgName).slice(0,5) + (r.orgName.length > 5 ? '…' : '') : '—'}</td>
