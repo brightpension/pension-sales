@@ -425,7 +425,7 @@
   <aside class="sidebar">
     <div class="logo">
       <div class="logo-title">법인사업부<br>영업활동 관리</div>
-      <div class="logo-sub">관리자 대시보드</div>
+      <div class="logo-sub" id="logo-sub">관리자 대시보드</div>
     </div>
     <div class="nav-section-label">메뉴</div>
     <div class="nav-item active" id="snav-overview" onclick="switchView('overview','sidebar')">
@@ -739,10 +739,34 @@ const DEFAULT_SHEET_ID   = '13BHBgMAko9jNZoPIwOe5EqML8n56RCPl4gHhrIrMU0U';
 const DEFAULT_LOG_GID    = '785851831';
 const DEFAULT_ROSTER_GID = '310906424';
 const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxIYOlk1xXVCuGZAstkjSApzPSB4fo9RCGi0ABtBQ5GTSxkcdnkKPFd2dAzOHKIoN9d/exec';
-// 관리자 키: 이 대시보드 전용 공유 비밀값. Apps Script의 ADMIN_KEY와 반드시 같아야 함.
+// 관리자 키: 이 대시보드 전용 공유 비밀값(상무님용, 전체 범위). Apps Script의 ADMIN_KEY와 반드시 같아야 함.
 // 정적 페이지 코드에 그대로 들어있어 "보기" 메뉴로 열어보면 노출되니, URL이 새지 않도록 주의.
 const ADMIN_KEY = '2K_ZcqwKfbaFB3YkmQzZOu3u';
-const ADMIN_QS  = 'admin=' + encodeURIComponent(ADMIN_KEY);
+
+// URL에 ?key=... 가 있으면 그 사람 전용(범위 제한) 키로 보고, 없으면 상무님용 마스터 키로 동작한다.
+const _urlParams = new URLSearchParams(location.search);
+const VIEW_KEY  = _urlParams.get('key') || ADMIN_KEY;
+const ADMIN_QS  = 'admin=' + encodeURIComponent(VIEW_KEY);
+
+let viewScope    = null;  // null = 전체, 배열이면 그 사업단들만
+let viewerLabel  = '';
+let scopeValid   = true;
+
+async function resolveScope() {
+  if (VIEW_KEY === ADMIN_KEY) { viewScope = null; viewerLabel = ''; return; }
+  try {
+    const res  = await fetch(SCRIPT_URL + '?action=getScope&key=' + encodeURIComponent(VIEW_KEY) + '&t=' + Date.now());
+    const data = await res.json();
+    if (data && data.name) {
+      viewScope   = data.orgs || null;
+      viewerLabel = data.name + ' (' + data.role + ')';
+    } else {
+      scopeValid = false;
+    }
+  } catch(e) {
+    scopeValid = false;
+  }
+}
 
 // ── 주차 계산 ──
 function getWeekStr(dateStr) {
@@ -815,6 +839,7 @@ async function loadData() {
       const seen = new Set();
       roster = roster.filter(m => { if (seen.has(m.name)) return false; seen.add(m.name); return true; });
     }
+    if (viewScope) roster = roster.filter(m => viewScope.includes(m.org));
     rosterMap = {};
     roster.forEach(m => { rosterMap[m.name] = m; });
 
@@ -837,6 +862,7 @@ async function loadData() {
         role:       (rosterMap[r.name] && rosterMap[r.name].role) || '',
       })).filter(r => r.name && r.actDate);
     }
+    if (viewScope) activities = activities.filter(a => viewScope.includes(a.org));
     allLogData = activities;
 
     const weekSet = new Set(activities.map(a => a.week).filter(Boolean));
@@ -1057,7 +1083,7 @@ function renderOrgTable() {
   }
   tbody.innerHTML = orgs.map(d => `
     <tr>
-      <td class="td-name"><a href="org_detail.html?org=${encodeURIComponent(d.orgName)}&admin=${encodeURIComponent(ADMIN_KEY)}" style="color:inherit;text-decoration:underline;text-decoration-style:dotted">${esc(d.orgName)}</a></td>
+      <td class="td-name"><a href="org_detail.html?org=${encodeURIComponent(d.orgName)}&admin=${encodeURIComponent(VIEW_KEY)}" style="color:inherit;text-decoration:underline;text-decoration-style:dotted">${esc(d.orgName)}</a></td>
       <td class="td-muted" style="font-size:12px">${[...d.managers].join(', ')}</td>
       <td style="font-weight:600;text-align:center">${d.total}</td>
       <td style="text-align:center;color:var(--blue)">${d.new_}</td>
@@ -1251,7 +1277,7 @@ async function fetchAttendance() {
 // ── 근태 등록/삭제 (관리자) ──
 async function postFormAdmin(paramsObj) {
   try {
-    const res  = await fetch(SCRIPT_URL, { method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body: new URLSearchParams({ ...paramsObj, admin: ADMIN_KEY }) });
+    const res  = await fetch(SCRIPT_URL, { method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body: new URLSearchParams({ ...paramsObj, admin: VIEW_KEY }) });
     const json = await res.json();
     return (json && json.ok) ? { ok:true } : { ok:false, error: (json && json.error) || '서버에서 저장 실패로 응답' };
   } catch(e) { return { ok:false, error:'network' }; }
@@ -1663,8 +1689,22 @@ function handleResize() {
 window.addEventListener('resize', handleResize);
 
 // ── 초기화 ──
-handleResize();
-loadData();
+(async () => {
+  await resolveScope();
+  if (!scopeValid) {
+    document.querySelector('.layout').innerHTML =
+      '<div style="padding:80px 20px;text-align:center;color:var(--text3);font-family:inherit;width:100%">' +
+      '<div style="font-size:16px;font-weight:700;margin-bottom:8px">⚠️ 유효하지 않은 링크입니다</div>' +
+      '<div style="font-size:13px">전달받은 링크가 정확한지 확인해 주세요.</div></div>';
+    document.getElementById('loading').style.display = 'none';
+    return;
+  }
+  if (viewerLabel) {
+    document.getElementById('logo-sub').textContent = viewerLabel;
+  }
+  handleResize();
+  loadData();
+})();
 
 // ── 내용 전체보기 모달 ──
 function showContentModal(content, name, date) {
