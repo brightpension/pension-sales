@@ -290,18 +290,12 @@
       </div>
     </div>
     <div class="section">
-      <div class="section-label">📋 제도</div>
-      <div class="btn-group" style="flex-wrap:wrap">
-        <button class="btn-select" data-scheme="DB"    onclick="selectScheme(this)">DB</button>
-        <button class="btn-select" data-scheme="DC"    onclick="selectScheme(this)">DC</button>
-        <button class="btn-select" data-scheme="IRP"   onclick="selectScheme(this)">IRP</button>
-        <button class="btn-select" data-scheme="DB/DC" onclick="selectScheme(this)">DB/DC</button>
-        <button class="btn-select" data-scheme="미도입" onclick="selectScheme(this)">미도입</button>
-      </div>
+      <div class="section-label">📋 제도 <span>(중복 선택 가능)</span></div>
+      <div class="btn-group" style="flex-wrap:wrap" id="scheme-group"></div>
     </div>
     <div class="section">
       <div class="section-label">🏢 단체명</div>
-      <input type="text" id="org-name" class="text-input" placeholder="예: 삼성화재, 현대차 노조" maxlength="50"
+      <input type="text" id="org-name" class="text-input" placeholder="단체명 입력" maxlength="50"
         autocomplete="off" oninput="onOrgInput()" onfocus="onOrgInput()" onblur="onOrgBlur()" onkeydown="onOrgKey(event)">
       <div id="org-dropdown" style="display:none;position:absolute;z-index:100;background:#fff;border:1px solid var(--border);border-radius:10px;box-shadow:0 4px 16px rgba(0,0,0,0.10);width:calc(100% - 32px);max-height:200px;overflow-y:auto;margin-top:2px"></div>
     </div>
@@ -311,7 +305,8 @@
     </div>
     <div class="section">
       <div class="section-label">📝 활동 내역</div>
-      <textarea id="content" class="text-area" placeholder="활동 내용, 특이사항 등 간단히 메모" maxlength="200"></textarea>
+      <textarea id="content" class="text-area" placeholder="활동 내용, 특이사항 등 간단히 메모" maxlength="700" oninput="updateContentCounter()"></textarea>
+      <div style="text-align:right;font-size:11px;color:var(--gray);margin-top:4px" id="content-counter">0/700자</div>
     </div>
     <button class="btn-submit" id="submit-btn" onclick="submitForm()" disabled>제출하기</button>
     <div style="font-size:11px;color:var(--gray);text-align:center;margin-top:8px" id="submit-hint">1건씩 제출 · 제출 후 추가 입력 가능</div>
@@ -430,6 +425,19 @@ document.getElementById('act-date').value = todayStr();
 document.getElementById('att-date').value = todayStr();
 checkDateBlock();
 
+// ── 제도 옵션 (EB사업단은 취급 상품이 달라 별도 목록) ──
+const SCHEME_OPTIONS = ORG === 'EB사업단'
+  ? ['IRP', '개인연금', '단체상해', '토탈마케팅']
+  : ['DB', 'DC', 'IRP', '미도입', '토탈마케팅'];
+document.getElementById('scheme-group').innerHTML = SCHEME_OPTIONS
+  .map(s => `<button class="btn-select" data-scheme="${s}" onclick="selectScheme(this)">${s}</button>`)
+  .join('');
+
+function updateContentCounter() {
+  const len = document.getElementById('content').value.length;
+  document.getElementById('content-counter').textContent = len + '/700자';
+}
+
 function getWeekStr(dateStr) {
   const d = new Date(String(dateStr || '').slice(0,10) + 'T00:00:00');
   if (isNaN(d.getTime())) return '';
@@ -471,7 +479,7 @@ function switchTab(tab) {
 
 // ── 활동 입력 ──
 let selPurpose = null, selScore = 0, selIdx = -1, selMethod = null;
-let selCategory = null, selScheme = null;
+let selCategory = null, selSchemes = [];
 
 function selectPurpose(btn) {
   document.querySelectorAll('[data-purpose]').forEach(b => b.classList.remove('ap0','ap1','ap2'));
@@ -493,9 +501,10 @@ function selectCategory(btn) {
   btn.classList.add('am');
 }
 function selectScheme(btn) {
-  document.querySelectorAll('[data-scheme]').forEach(b => b.classList.remove('am'));
-  selScheme = btn.dataset.scheme;
-  btn.classList.add('am');
+  const v = btn.dataset.scheme;
+  const idx = selSchemes.indexOf(v);
+  if (idx === -1) { selSchemes.push(v); btn.classList.add('am'); }
+  else { selSchemes.splice(idx, 1); btn.classList.remove('am'); }
 }
 function updateScore() {
   // 활동 입력 화면의 점수 미리보기 카드는 제거됨 (제출 후 완료 화면에서 점수 확인 가능)
@@ -671,7 +680,7 @@ async function submitForm() {
     orgName: document.getElementById('org-name').value.trim(),
     contact: document.getElementById('contact').value.trim(),
     content: document.getElementById('content').value.trim(),
-    score: selScore, category: selCategory || '', scheme: selScheme || ''
+    score: selScore, category: selCategory || '', scheme: selSchemes.join(', ')
   };
   lastPayload = payload;
   const result = await postJSON(payload);
@@ -710,11 +719,12 @@ function resetForm() {
   document.getElementById('edit-banner').style.display = 'none';
   document.getElementById('submit-btn').innerHTML = '제출하기';
   document.getElementById('submit-hint').textContent = '1건씩 제출 · 제출 후 추가 입력 가능';
-  selPurpose = null; selScore = 0; selIdx = -1; selMethod = null; selCategory = null; selScheme = null;
+  selPurpose = null; selScore = 0; selIdx = -1; selMethod = null; selCategory = null; selSchemes = [];
   document.querySelectorAll('[data-purpose],[data-method],[data-category],[data-scheme]').forEach(b => b.classList.remove('ap0','ap1','ap2','am'));
   document.getElementById('org-name').value = '';
   document.getElementById('contact').value = '';
   document.getElementById('content').value = '';
+  updateContentCounter();
   document.getElementById('act-date').value = todayStr();
   document.getElementById('submit-btn').disabled = true;
   updateScore();
@@ -736,11 +746,12 @@ function editActivity(data) {
   document.querySelectorAll('[data-method]').forEach(b => { b.classList.remove('am'); if (b.dataset.method === data.method) { selMethod = data.method; b.classList.add('am'); } });
   selCategory = null;
   document.querySelectorAll('[data-category]').forEach(b => { b.classList.remove('am'); if (b.dataset.category === data.category) { selCategory = data.category; b.classList.add('am'); } });
-  selScheme = null;
-  document.querySelectorAll('[data-scheme]').forEach(b => { b.classList.remove('am'); if (b.dataset.scheme === data.scheme) { selScheme = data.scheme; b.classList.add('am'); } });
+  selSchemes = (data.scheme || '').split(',').map(s => s.trim()).filter(Boolean);
+  document.querySelectorAll('[data-scheme]').forEach(b => b.classList.toggle('am', selSchemes.includes(b.dataset.scheme)));
   document.getElementById('org-name').value = data.orgName || '';
   document.getElementById('contact').value  = data.contact  || '';
   document.getElementById('content').value  = data.content  || '';
+  updateContentCounter();
   document.getElementById('form-view').style.display = 'block';
   document.getElementById('success-view').style.display = 'none';
   document.getElementById('edit-banner').style.display = 'flex';
