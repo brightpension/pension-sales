@@ -1057,7 +1057,7 @@ function renderOrgTable() {
   }
   tbody.innerHTML = orgs.map(d => `
     <tr>
-      <td class="td-name">${esc(d.orgName)}</td>
+      <td class="td-name"><a href="org_detail.html?org=${encodeURIComponent(d.orgName)}&admin=${encodeURIComponent(ADMIN_KEY)}" style="color:inherit;text-decoration:underline;text-decoration-style:dotted">${esc(d.orgName)}</a></td>
       <td class="td-muted" style="font-size:12px">${[...d.managers].join(', ')}</td>
       <td style="font-weight:600;text-align:center">${d.total}</td>
       <td style="text-align:center;color:var(--blue)">${d.new_}</td>
