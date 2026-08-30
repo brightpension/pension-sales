@@ -321,14 +321,6 @@
   @keyframes spin { to { transform: rotate(360deg); } }
   .loading-text { font-size: 13px; color: var(--text2); }
 
-  /* ── 설정 ── */
-  .config-section { max-width: 560px; }
-  .config-row { display: flex; flex-direction: column; gap: 6px; margin-bottom: 18px; }
-  .config-label { font-size: 13px; font-weight: 500; }
-  .config-desc { font-size: 12px; color: var(--text3); line-height: 1.5; }
-  .config-input { padding: 8px 12px; border: 1px solid var(--border); border-radius: var(--radius-sm); font-size: 13px; font-family: inherit; background: var(--surface); color: var(--text); }
-  .config-input:focus { outline: none; border-color: var(--blue); }
-  .config-saved { font-size: 12px; color: var(--green); display: none; margin-top: 8px; }
 
   /* ── 뷰 전환 ── */
   .view { display: none; }
@@ -423,8 +415,6 @@
 
     .att-cards { grid-template-columns: 1fr; }
 
-    .config-section { max-width: 100%; }
-
     .table-wrap table { min-width: 560px; }
     .table-wrap.log-table table { min-width: 680px; }
 
@@ -475,9 +465,6 @@
     </div>
     <div class="nav-item" id="snav-tasks" onclick="switchView('tasks','sidebar')">
       <span class="nav-icon">📋</span> 과제관리 <span style="font-size:10px;color:var(--text3);font-weight:400">(프로토타입)</span>
-    </div>
-    <div class="nav-item" id="snav-config" onclick="switchView('config','sidebar')">
-      <span class="nav-icon">⚙️</span> 설정
     </div>
     <div class="sidebar-footer">
       <button class="sync-btn" onclick="loadData()">🔄 데이터 새로고침</button>
@@ -761,34 +748,6 @@
       </div>
     </div>
 
-    <!-- ── 설정 뷰 ── -->
-    <div id="view-config" class="view">
-      <div class="section config-section">
-        <div class="section-header"><span class="section-title">Google Sheets 연동</span></div>
-
-        <div class="config-row">
-          <label class="config-label">스프레드시트 ID</label>
-          <div class="config-desc">URL의 <code>/d/</code> 뒤 문자열<br><code style="font-size:11px;color:var(--text3)">https://docs.google.com/spreadsheets/d/<strong>여기</strong>/edit</code></div>
-          <input class="config-input" id="cfg-sheet-id" placeholder="13BHBgMAko9jNZoPIwOe5EqML8n56RCPl4gHhrIrMU0U" oninput="saveConfig()">
-        </div>
-
-        <div class="config-row">
-          <label class="config-label">활동원장 탭 GID</label>
-          <div class="config-desc">건별 활동 내역이 쌓이는 시트 탭의 GID</div>
-          <input class="config-input" id="cfg-log-gid" placeholder="785851831" oninput="saveConfig()">
-        </div>
-
-        <div class="config-row">
-          <label class="config-label">팀원명단 탭 GID</label>
-          <div class="config-desc">팀원 이름·직책이 있는 시트 탭의 GID (직책 정보 연동용)</div>
-          <input class="config-input" id="cfg-roster-gid" placeholder="310906424" oninput="saveConfig()">
-        </div>
-
-        <button class="btn-primary" onclick="loadData()">🔄 데이터 연결 테스트</button>
-        <div class="config-saved" id="config-saved">✓ 설정 저장됨</div>
-      </div>
-    </div>
-
   </main>
 </div>
 
@@ -811,9 +770,6 @@
   </button>
   <button class="bottom-nav-btn" id="bnav-tasks" onclick="switchView('tasks','bottom')">
     <span class="bn-icon">📋</span><span>과제관리</span>
-  </button>
-  <button class="bottom-nav-btn" id="bnav-config" onclick="switchView('config','bottom')">
-    <span class="bn-icon">⚙️</span><span>설정</span>
   </button>
 </nav>
 
@@ -881,39 +837,11 @@ function weekStrToLabel(weekStr) {
   return yy + '년 ' + month + '월 ' + weekOfMonth + '주차';
 }
 
-// ── 설정 로드/저장 ──
-// file:// 로 직접 열면 브라우저가 localStorage 접근을 막는 경우가 있어(특히 크롬),
-// 그때도 나머지 화면이 계속 로딩중으로 멈추지 않도록 try/catch로 방어.
-function safeGetStoredConfig_() {
-  try { return JSON.parse(localStorage.getItem('dashboard_config') || '{}'); }
-  catch(e) { return {}; }
-}
-
-function loadConfig() {
-  const cfg = safeGetStoredConfig_();
-  document.getElementById('cfg-sheet-id').value   = cfg.sheetId    || DEFAULT_SHEET_ID;
-  document.getElementById('cfg-log-gid').value    = cfg.logGid     || DEFAULT_LOG_GID;
-  document.getElementById('cfg-roster-gid').value = cfg.rosterGid  || DEFAULT_ROSTER_GID;
-}
-
-function saveConfig() {
-  const cfg = {
-    sheetId:   document.getElementById('cfg-sheet-id').value.trim(),
-    logGid:    document.getElementById('cfg-log-gid').value.trim()    || DEFAULT_LOG_GID,
-    rosterGid: document.getElementById('cfg-roster-gid').value.trim() || DEFAULT_ROSTER_GID,
-  };
-  try { localStorage.setItem('dashboard_config', JSON.stringify(cfg)); } catch(e) {}
-  const saved = document.getElementById('config-saved');
-  saved.style.display = 'block';
-  setTimeout(() => saved.style.display = 'none', 2000);
-}
-
+// ── 설정 ──
+// 시트ID/GID는 고정값. 시트 자체를 옮기는 일은 사실상 없어서 화면에 입력창을 두지 않고,
+// 필요해지면(예: 시트 이전) 아래 기본값만 코드에서 직접 고치면 된다.
 function getConfig() {
-  const cfg = safeGetStoredConfig_();
-  if (!cfg.sheetId)   cfg.sheetId   = DEFAULT_SHEET_ID;
-  if (!cfg.logGid)    cfg.logGid    = DEFAULT_LOG_GID;
-  if (!cfg.rosterGid) cfg.rosterGid = DEFAULT_ROSTER_GID;
-  return cfg;
+  return { sheetId: DEFAULT_SHEET_ID, logGid: DEFAULT_LOG_GID, rosterGid: DEFAULT_ROSTER_GID };
 }
 
 // ── 데이터 로드 ──
@@ -1798,7 +1726,7 @@ function switchDetailTab(tab, el) {
 }
 
 // ── 뷰 전환 ──
-const VIEW_TITLES = { overview: '요약', table: '팀장 현황', log: '활동일지', orgs: '단체 현황', attendance: '근태', tasks: '과제관리', config: '설정' };
+const VIEW_TITLES = { overview: '요약', table: '팀장 현황', log: '활동일지', orgs: '단체 현황', attendance: '근태', tasks: '과제관리' };
 
 function switchView(view, from) {
   currentView = view;
@@ -1815,7 +1743,7 @@ function switchView(view, from) {
   document.getElementById('view-' + view).classList.add('active');
   document.getElementById('page-title').textContent = VIEW_TITLES[view];
 
-  document.getElementById('metrics-row').style.display = (view === 'config' || view === 'orgs' || view === 'tasks') ? 'none' : 'grid';
+  document.getElementById('metrics-row').style.display = (view === 'orgs' || view === 'tasks') ? 'none' : 'grid';
   document.getElementById('week-select').style.display = (view === 'log' || view === 'orgs' || view === 'tasks') ? 'none' : '';
   updateWeekLabels();
 
@@ -1884,7 +1812,6 @@ function handleResize() {
 window.addEventListener('resize', handleResize);
 
 // ── 초기화 ──
-loadConfig();
 handleResize();
 loadData();
 
