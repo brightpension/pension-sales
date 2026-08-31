@@ -113,6 +113,7 @@
     margin-bottom: 24px; flex-wrap: wrap; gap: 10px;
   }
   .page-title { font-size: 18px; font-weight: 600; }
+  .page-viewer { font-size: 12px; color: var(--text3); margin-top: 2px; }
   .page-controls { display: flex; align-items: center; gap: 10px; }
   select {
     padding: 7px 10px; border-radius: var(--radius-sm);
@@ -449,7 +450,10 @@
   <!-- ── 메인 ── -->
   <main class="main">
     <div class="page-header">
-      <div class="page-title" id="page-title">현황</div>
+      <div>
+        <div class="page-title" id="page-title">현황</div>
+        <div class="page-viewer" id="page-viewer"></div>
+      </div>
       <div class="page-controls">
         <select id="week-select" onchange="renderAll()">
           <option value="0">최신 주차</option>
@@ -1671,6 +1675,7 @@ window.addEventListener('resize', handleResize);
   }
   if (viewerLabel) {
     document.getElementById('logo-sub').textContent = viewerLabel;
+    document.getElementById('page-viewer').textContent = viewerLabel;
   }
   handleResize();
   loadData();
