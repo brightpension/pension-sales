@@ -122,9 +122,6 @@
   }
   .btn-select:active { transform: scale(0.96); }
   .btn-sub { font-size: 11px; font-weight: 400; display: block; margin-top: 2px; }
-  .btn-select.ap0 { background:var(--blue-bg); border-color:var(--blue); color:var(--blue); }
-  .btn-select.ap1 { background:var(--green-bg); border-color:var(--green); color:var(--green); }
-  .btn-select.ap2 { background:var(--amber-bg); border-color:#D97706; color:var(--amber); }
   .btn-select.am  { background:var(--purple-bg); border-color:#7C3AED; color:var(--purple); }
   .btn-select.sel-vac { background:var(--red-bg); border-color:var(--red); color:var(--red); }
   .btn-select.sel-trip { background:var(--blue-bg); border-color:var(--blue); color:var(--blue); }
@@ -185,22 +182,11 @@
   .prog-bg { background:rgba(255,255,255,0.25);border-radius:100px;height:8px;overflow:hidden; }
   .prog-fill { height:8px;border-radius:100px;background:#fff;transition:width 0.5s; }
   .prog-label { font-size:11px;opacity:0.7;margin-top:5px;text-align:right; }
-  .stat-grid { display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px; }
-  .stat-item { background:#fff;border-radius:var(--radius);border:1px solid var(--border);padding:10px 12px;text-align:center; }
-  .stat-val { font-size:22px;font-weight:800;margin-bottom:2px; }
-  .stat-label { font-size:11px;color:var(--gray); }
-  .stat-item.blue .stat-val { color:var(--blue); }
-  .stat-item.green .stat-val { color:var(--green); }
-  .stat-item.amber .stat-val { color:var(--amber); }
   .act-item { background:#fff;border-radius:var(--radius);border:1px solid var(--border);padding:12px 14px;margin-bottom:8px; }
   .act-item-top { display:flex;justify-content:space-between;align-items:center;margin-bottom:6px; }
   .act-date { font-size:12px;color:var(--gray); }
   .act-score { font-size:14px;font-weight:800;color:var(--blue); }
   .act-badges { display:flex;gap:5px;flex-wrap:wrap;margin-bottom:4px; }
-  .pb { display:inline-block;padding:2px 8px;border-radius:100px;font-size:11px;font-weight:600; }
-  .pb0 { background:var(--blue-bg);color:var(--blue); }
-  .pb1 { background:var(--green-bg);color:var(--green); }
-  .pb2 { background:var(--amber-bg);color:var(--amber); }
   .mb { display:inline-block;background:var(--purple-bg);color:var(--purple);padding:2px 8px;border-radius:100px;font-size:11px;font-weight:600; }
   .act-detail { font-size:12px;color:var(--gray);margin-top:3px; }
   .act-actions { display:flex;gap:6px;margin-top:8px;border-top:1px solid var(--border);padding-top:8px; }
@@ -266,20 +252,13 @@
       </div>
     </div>
     <div class="section">
-      <div class="section-label">🎯 활동목적 (WHY)</div>
-      <div class="btn-group">
-        <button class="btn-select" data-purpose="신규발굴" data-score="3" data-idx="0" onclick="selectPurpose(this)">신규발굴<span class="btn-sub">+3점</span></button>
-        <button class="btn-select" data-purpose="펀드상담" data-score="2" data-idx="1" onclick="selectPurpose(this)">펀드상담<span class="btn-sub">+2점</span></button>
-        <button class="btn-select" data-purpose="단체관리" data-score="1" data-idx="2" onclick="selectPurpose(this)">단체관리<span class="btn-sub">+1점</span></button>
-      </div>
-    </div>
-    <div class="section">
-      <div class="section-label">🍽 활동방식 (HOW)</div>
-      <div class="btn-group">
-        <button class="btn-select" data-method="방문" onclick="selectMethod(this)">방문</button>
-        <button class="btn-select" data-method="중식" onclick="selectMethod(this)">중식</button>
-        <button class="btn-select" data-method="석식" onclick="selectMethod(this)">석식</button>
-        <button class="btn-select" data-method="기타" onclick="selectMethod(this)">기타</button>
+      <div class="section-label">🍽 활동방식</div>
+      <div class="btn-group" style="flex-wrap:wrap">
+        <button class="btn-select" data-method="방문" data-score="1" onclick="selectMethod(this)">방문<span class="btn-sub">+1점</span></button>
+        <button class="btn-select" data-method="중식" data-score="2" onclick="selectMethod(this)">중식<span class="btn-sub">+2점</span></button>
+        <button class="btn-select" data-method="석식" data-score="3" onclick="selectMethod(this)">석식<span class="btn-sub">+3점</span></button>
+        <button class="btn-select" data-method="펀드" data-score="1" onclick="selectMethod(this)">펀드<span class="btn-sub">+1점</span></button>
+        <button class="btn-select" data-method="기타" data-score="0" onclick="selectMethod(this)">기타<span class="btn-sub">+0점</span></button>
       </div>
     </div>
     <div class="section">
@@ -478,22 +457,15 @@ function switchTab(tab) {
 }
 
 // ── 활동 입력 ──
-let selPurpose = null, selScore = 0, selIdx = -1, selMethod = null;
+let selScore = 0, selMethod = null;
 let selCategory = null, selSchemes = [];
 
-function selectPurpose(btn) {
-  document.querySelectorAll('[data-purpose]').forEach(b => b.classList.remove('ap0','ap1','ap2'));
-  selPurpose = btn.dataset.purpose;
-  selScore   = +btn.dataset.score;
-  selIdx     = +btn.dataset.idx;
-  btn.classList.add('ap' + selIdx);
-  updateScore(); checkReady();
-}
 function selectMethod(btn) {
   document.querySelectorAll('[data-method]').forEach(b => b.classList.remove('am'));
   selMethod = btn.dataset.method;
+  selScore  = +btn.dataset.score;
   btn.classList.add('am');
-  checkReady();
+  updateScore(); checkReady();
 }
 function selectCategory(btn) {
   document.querySelectorAll('[data-category]').forEach(b => b.classList.remove('am'));
@@ -510,7 +482,7 @@ function updateScore() {
   // 활동 입력 화면의 점수 미리보기 카드는 제거됨 (제출 후 완료 화면에서 점수 확인 가능)
 }
 function checkReady() {
-  document.getElementById('submit-btn').disabled = !(NAME && KEY && selPurpose && selMethod) || dateBlocked;
+  document.getElementById('submit-btn').disabled = !(NAME && KEY && selMethod) || dateBlocked;
 }
 
 // ── 휴가일 활동 입력 차단 (1일 휴가로 등록된 날짜는 활동 등록 불가) ──
@@ -663,7 +635,7 @@ renderSyncBanner();
 flushPendingQueue();
 
 async function submitForm() {
-  if (!NAME || !KEY || !selPurpose || !selMethod) return;
+  if (!NAME || !KEY || !selMethod) return;
   if (dateBlocked) { alert("이 날짜는 '1일 휴가'로 등록되어 있어 활동을 입력할 수 없습니다."); return; }
   const btn = document.getElementById('submit-btn');
   btn.disabled = true;
@@ -676,7 +648,7 @@ async function submitForm() {
     originalSubmitTime: editMode ? editSubmitTime : null,
     rowId: editMode ? editRowId : uuid(), // submitTime 문자열 대신 고유 ID로 행을 식별 (초 단위 충돌/재포맷 방지)
     actDate: dateStr, org: ORG, name: NAME, role: ROLE, key: KEY,
-    purpose: selPurpose, method: selMethod,
+    purpose: '', method: selMethod,
     orgName: document.getElementById('org-name').value.trim(),
     contact: document.getElementById('contact').value.trim(),
     content: document.getElementById('content').value.trim(),
@@ -703,10 +675,8 @@ function showSuccess() {
   document.getElementById('form-view').style.display = 'none';
   document.getElementById('success-view').style.display = 'block';
   const d = lastPayload;
-  document.getElementById('success-sub').textContent = `${d.actDate} · ${d.purpose} · ${d.method} · +${d.score}점`;
-  const pbC = ['pb0','pb1','pb2'];
+  document.getElementById('success-sub').textContent = `${d.actDate} · ${d.method} · +${d.score}점`;
   document.getElementById('submitted-rows').innerHTML = [
-    ['활동목적', `<span class="pb ${pbC[selIdx]}">${esc(d.purpose)}</span>`],
     ['활동방식', `<span class="mb">${esc(d.method)}</span>`],
     ['단체명', esc(d.orgName) || '—'], ['담당자', esc(d.contact) || '—'],
     ['내용', esc(d.content) || '—'], ['점수', `<strong>+${d.score}점</strong>`],
@@ -719,8 +689,8 @@ function resetForm() {
   document.getElementById('edit-banner').style.display = 'none';
   document.getElementById('submit-btn').innerHTML = '제출하기';
   document.getElementById('submit-hint').textContent = '1건씩 제출 · 제출 후 추가 입력 가능';
-  selPurpose = null; selScore = 0; selIdx = -1; selMethod = null; selCategory = null; selSchemes = [];
-  document.querySelectorAll('[data-purpose],[data-method],[data-category],[data-scheme]').forEach(b => b.classList.remove('ap0','ap1','ap2','am'));
+  selScore = 0; selMethod = null; selCategory = null; selSchemes = [];
+  document.querySelectorAll('[data-method],[data-category],[data-scheme]').forEach(b => b.classList.remove('am'));
   document.getElementById('org-name').value = '';
   document.getElementById('contact').value = '';
   document.getElementById('content').value = '';
@@ -737,13 +707,11 @@ function cancelEdit() { resetForm(); }
 function editActivity(data) {
   editMode = true; editSubmitTime = data.submitTime; editRowId = data.rowId || null;
   document.getElementById('act-date').value = data.actDate || todayStr();
-  selPurpose = null; selScore = 0; selIdx = -1;
-  document.querySelectorAll('[data-purpose]').forEach(b => {
-    b.classList.remove('ap0','ap1','ap2');
-    if (b.dataset.purpose === data.purpose) { selPurpose = data.purpose; selScore = +b.dataset.score; selIdx = +b.dataset.idx; b.classList.add('ap'+selIdx); }
+  selScore = 0; selMethod = null;
+  document.querySelectorAll('[data-method]').forEach(b => {
+    b.classList.remove('am');
+    if (b.dataset.method === data.method) { selMethod = data.method; selScore = +b.dataset.score; b.classList.add('am'); }
   });
-  selMethod = null;
-  document.querySelectorAll('[data-method]').forEach(b => { b.classList.remove('am'); if (b.dataset.method === data.method) { selMethod = data.method; b.classList.add('am'); } });
   selCategory = null;
   document.querySelectorAll('[data-category]').forEach(b => { b.classList.remove('am'); if (b.dataset.category === data.category) { selCategory = data.category; b.classList.add('am'); } });
   selSchemes = (data.scheme || '').split(',').map(s => s.trim()).filter(Boolean);
@@ -815,13 +783,8 @@ async function loadRecords() {
       deduct = attData.filter(r => r.name === NAME && (r.week === weekLabel || r.week === weekStr)).reduce((s, r) => s + Number(r.deduct), 0);
     } catch(e) {}
 
-    let total = 0, 신규 = 0, 펀드 = 0, 단체 = 0;
-    myRows.forEach(r => {
-      total += r.score || 0;
-      if (r.purpose === '신규발굴') 신규++;
-      else if (r.purpose === '펀드상담') 펀드++;
-      else if (r.purpose === '단체관리') 단체++;
-    });
+    let total = 0;
+    myRows.forEach(r => { total += r.score || 0; });
 
     const TARGET_BASE = 20;
     const effTarget = Math.max(0, TARGET_BASE - deduct);
@@ -829,11 +792,10 @@ async function loadRecords() {
     const reached = total >= effTarget;
 
     rowCache.clear();
-    const pbMap = {신규발굴:'pb0', 펀드상담:'pb1', 단체관리:'pb2'};
     const itemsHTML = [...myRows].reverse().map(r => {
       rowCache.set(r.submitTime, {
         submitTime: r.submitTime, rowId: r.rowId || '', actDate: r.actDate, category: r.category,
-        orgName: r.orgName, scheme: r.scheme, purpose: r.purpose,
+        orgName: r.orgName, scheme: r.scheme,
         method: r.method, content: r.content, contact: r.contact || '', score: r.score
       });
       const extras = [
@@ -844,7 +806,7 @@ async function loadRecords() {
       ].filter(Boolean).join('  ');
       return `<div class="act-item">
         <div class="act-item-top"><span class="act-date">📅 ${esc(r.actDate)}</span><span class="act-score">+${r.score}점</span></div>
-        <div class="act-badges"><span class="pb ${pbMap[r.purpose]||''}">${esc(r.purpose)||'—'}</span>${r.method?`<span class="mb">${esc(r.method)}</span>`:''}</div>
+        <div class="act-badges">${r.method?`<span class="mb">${esc(r.method)}</span>`:''}</div>
         ${extras?`<div class="act-detail">${extras}</div>`:''}
         <div class="act-actions">
           <button class="btn-edit" data-key="${encodeURIComponent(r.submitTime)}" onclick="editActivity(rowCache.get(decodeURIComponent(this.dataset.key)))">✏️ 수정</button>
@@ -869,11 +831,6 @@ async function loadRecords() {
         <div class="prog-bg"><div class="prog-fill" style="width:${pct}%"></div></div>
         <div class="prog-label">목표 ${effTarget}점 중 ${total}점 달성</div>
         ${deductBadge}
-      </div>
-      <div class="stat-grid">
-        <div class="stat-item blue"><div class="stat-val">${신규}</div><div class="stat-label">신규발굴</div></div>
-        <div class="stat-item green"><div class="stat-val">${펀드}</div><div class="stat-label">펀드상담</div></div>
-        <div class="stat-item amber"><div class="stat-val">${단체}</div><div class="stat-label">단체관리</div></div>
       </div>
       <div style="font-size:12px;font-weight:700;color:var(--gray);margin-bottom:8px">활동 내역 (${myRows.length}건)</div>
       <div class="act-list">${itemsHTML}</div>`;
@@ -1017,8 +974,8 @@ function downloadMyCSV(scope) {
   let rows = cachedRows.filter(r => r.name === NAME);
   if (scope === 'week') rows = rows.filter(r => getWeekStr(r.actDate) === weekStr);
   if (!rows.length) { alert('다운로드할 데이터가 없습니다.'); return; }
-  const csvHeader = ['활동일자','소속','이름','단체구분','단체명','제도','활동목적','활동방식','내용','점수'];
-  const csvRows   = rows.map(r => [r.actDate, r.org, r.name, r.category, r.orgName, r.scheme, r.purpose, r.method, r.content, r.score]);
+  const csvHeader = ['활동일자','소속','이름','단체구분','단체명','제도','활동방식','내용','점수'];
+  const csvRows   = rows.map(r => [r.actDate, r.org, r.name, r.category, r.orgName, r.scheme, r.method, r.content, r.score]);
   const csv  = [csvHeader,...csvRows].map(r => r.map(c => `"${String(c||'').replace(/"/g,'""')}"`).join(',')).join('\n');
   const blob = new Blob(['﻿'+csv], {type:'text/csv;charset=utf-8'});
   const a = document.createElement('a');
