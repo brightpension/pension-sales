@@ -26,6 +26,10 @@
     --amber-bg: #F3EBDD;
     --amber-line: #DCC8A4;
 
+    --warn: #A23B2E;
+    --warn-bg: #F6E4DE;
+    --warn-line: #E0BBA9;
+
     --radius: 10px;
   }
 
@@ -46,6 +50,10 @@
       --amber: #D8AE73;
       --amber-bg: #2E2618;
       --amber-line: #4A3B24;
+
+      --warn: #E2937E;
+      --warn-bg: #3A241C;
+      --warn-line: #5A3A2C;
     }
   }
   :root[data-theme="dark"] {
@@ -64,6 +72,10 @@
     --amber: #D8AE73;
     --amber-bg: #2E2618;
     --amber-line: #4A3B24;
+
+    --warn: #E2937E;
+    --warn-bg: #3A241C;
+    --warn-line: #5A3A2C;
   }
 
   * { box-sizing: border-box; }
@@ -144,7 +156,9 @@
   }
   .leader .note { background: var(--amber-bg); color: var(--ink); border: 1px solid var(--amber-line); }
   .admin  .note { background: var(--navy-bg);  color: var(--ink); border: 1px solid var(--navy-line); }
+  .leader .note.note-warn, .admin .note.note-warn { background: var(--warn-bg); color: var(--ink); border: 1px solid var(--warn-line); }
   .note b { flex-shrink: 0; }
+  .note-warn b { color: var(--warn); }
 
   .scope-table {
     width: 100%; border-collapse: collapse; margin: 14px 0 4px; font-size: 13.5px;
@@ -189,6 +203,8 @@
         <div class="step-title">접속하기</div>
         <p>카카오톡·문자로 받은 본인 전용 링크를 누르면 별도 아이디·비밀번호 없이 바로 접속됩니다.</p>
         <p>상단에 본인 <span class="chip">이름</span> · <span class="chip">소속</span> · <span class="chip">직책</span>이 표시되면 정상 접속된 것입니다.</p>
+        <div class="note note-warn"><b>⚠</b>본인 전용 링크는 단체 카톡방 등에 공유하지 마세요. 별도 로그인이 없어 링크를 아는 사람은 누구나 내 이름으로 활동을 등록·수정·삭제할 수 있습니다.</div>
+        <div class="note"><b>ⓘ</b>링크를 잃어버렸다면 담당자에게 재발급을 요청해 주세요.</div>
       </div>
     </div>
 
@@ -201,9 +217,9 @@
           <li><b>활동일자</b> — 기본값은 오늘. 근태에 '1일 휴가'로 등록된 날짜는 자동으로 입력이 막힙니다.</li>
           <li><b>단체구분</b> — 신규 / 정산 중 선택</li>
           <li><b>제도</b> — 여러 개를 동시에 선택할 수 있습니다 (DB · DC · IRP · 미도입 · 토탈마케팅)</li>
-          <li><b>단체명</b> — 직접 입력. 예전에 입력한 단체명은 자동완성으로 뜹니다.</li>
+          <li><b>단체명</b> — 자동완성으로 뜨는 기존 단체명을 그대로 선택해 입력해 주세요 (퇴직연금 시스템과 동일한 표기).</li>
           <li><b>담당자</b> — 여러 명이면 쉼표로 구분해서 입력</li>
-          <li><b>활동방식</b> — 아래 표의 점수가 그대로 적립됩니다.</li>
+          <li><b>활동방식</b> — 아래 표의 점수가 그대로 적립됩니다. 제도와 달리 하나만 선택됩니다.</li>
           <li><b>활동 내역</b> — 최대 700자, 입력하는 동안 남은 글자수가 실시간으로 표시됩니다.</li>
         </ul>
         <table class="scope-table">
@@ -214,7 +230,9 @@
           <tr><td>펀드</td><td>+1점</td></tr>
         </table>
         <div class="note"><b>ⓘ</b>주간 기준 점수는 <b>25점</b>입니다 (평일 1일 5점 기준).</div>
-        <p><span class="chip">제출하기</span>를 누르면 등록이 완료됩니다.</p>
+        <div class="note note-warn"><b>⚠</b>단체명을 새로 다르게 입력하면(오타·표기 차이 포함) 통계·이력 조회에서 별도 단체로 잡혀 실적이 나뉩니다. 꼭 자동완성에 뜨는 기존 이름을 선택해 주세요.</div>
+        <p><span class="chip">제출하기</span>를 누르면 등록이 완료됩니다. 여러 단체 활동은 한 번에 입력할 수 없고, 한 건씩 제출 후 다시 입력해야 합니다.</p>
+        <div class="note"><b>ⓘ</b>제출 중 네트워크가 끊겨도 기기에 임시 저장되었다가 다시 연결되면 자동으로 동기화됩니다. 오류가 나도 같은 내용을 여러 번 제출하지 말고, 재접속 후 '내 기록'에서 저장 여부를 먼저 확인해 주세요.</div>
         <div class="note"><b>ⓘ</b>EB사업단은 제도 항목이 IRP · 개인연금 · 단체상해 · 토탈마케팅으로 자동으로 다르게 나타납니다.</div>
       </div>
     </div>
@@ -225,6 +243,7 @@
         <div class="step-title">내 기록 확인 · 수정 · 삭제</div>
         <p>하단 <span class="chip">내 기록</span> 탭에서 주차별로 그동안 입력한 내용을 확인할 수 있습니다.</p>
         <p>잘못 입력한 기록은 목록에서 눌러 내용을 고친 뒤 저장하거나, 그대로 삭제할 수 있습니다.</p>
+        <div class="note note-warn"><b>⚠</b>삭제한 기록은 복구할 수 없습니다. 삭제 전 확인창이 한 번 더 뜨니 신중하게 확인해 주세요.</div>
       </div>
     </div>
 
@@ -246,6 +265,7 @@
           <tr><td>출장 (1일 · 오전 · 오후)</td><td>0점 (기록만)</td></tr>
         </table>
         <p>등록된 기록은 월 단위로 확인하며, 상단 드롭다운에서 지난 달도 조회할 수 있습니다.</p>
+        <div class="note"><b>ⓘ</b>같은 날짜·같은 유형(예: 같은 날 '1일 휴가')은 중복으로 등록되지 않으며, 이미 등록돼 있으면 안내 메시지가 뜹니다.</div>
         <div class="note"><b>ⓘ</b>이미 '1일 휴가'로 등록된 날짜는 그날 활동 기록 입력이 자동으로 차단됩니다.</div>
       </div>
     </div>
@@ -268,6 +288,7 @@
           <tr><td>단장</td><td>본인 사업단만</td></tr>
         </table>
         <div class="note"><b>ⓘ</b>근태 현황만은 직책과 무관하게 항상 전체 팀장 기준으로 보입니다.</div>
+        <div class="note note-warn"><b>⚠</b>관리자 링크, 특히 사업부장(전체 범위) 링크는 노출되면 전체 팀의 데이터에 접근할 수 있으니 캡처·전달하지 않도록 각별히 주의해 주세요.</div>
       </div>
     </div>
 
