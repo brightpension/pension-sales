@@ -582,11 +582,10 @@
           <select id="lf-name" onchange="onLogNameChange()"><option value="">팀장</option></select>
           <select id="lf-method" onchange="applyLogFilter()">
             <option value="">방식</option>
-            <option value="방문">방문</option>
-            <option value="중식">중식</option>
             <option value="석식">석식</option>
+            <option value="중식">중식</option>
+            <option value="방문">방문</option>
             <option value="펀드">펀드</option>
-            <option value="기타">기타</option>
           </select>
           <input type="text" id="lf-search" placeholder="🔍 단체명 / 제도 / 내용" oninput="applyLogFilter()">
           <button onclick="clearLogFilter()">초기화</button>
@@ -629,7 +628,7 @@
             <thead>
               <tr>
                 <th>단체명</th><th>영업팀장</th><th>총활동</th>
-                <th>방문</th><th>중식</th><th>석식</th><th>펀드</th><th>기타</th>
+                <th>석식</th><th>중식</th><th>방문</th><th>펀드</th>
                 <th>최근활동일</th>
               </tr>
             </thead>
@@ -1038,16 +1037,15 @@ function computeOrgSummary() {
     if (nameFilter && a.name    !== nameFilter) return;
     if (!map[a.orgName]) map[a.orgName] = {
       orgName: a.orgName, total: 0,
-      visit: 0, lunch: 0, dinner: 0, fund: 0, etc: 0,
+      dinner: 0, lunch: 0, visit: 0, fund: 0,
       managers: new Set(), lastDate: ''
     };
     const d = map[a.orgName];
     d.total++;
-    if (a.method === '방문')      d.visit++;
+    if (a.method === '석식')      d.dinner++;
     else if (a.method === '중식') d.lunch++;
-    else if (a.method === '석식') d.dinner++;
+    else if (a.method === '방문') d.visit++;
     else if (a.method === '펀드') d.fund++;
-    else if (a.method === '기타') d.etc++;
     if (a.name) d.managers.add(a.name);
     if (a.actDate > d.lastDate) d.lastDate = a.actDate;
   });
@@ -1067,11 +1065,10 @@ function renderOrgTable() {
       <td class="td-name"><a href="org_detail.html?org=${encodeURIComponent(d.orgName)}&admin=${encodeURIComponent(VIEW_KEY)}" style="color:inherit;text-decoration:underline;text-decoration-style:dotted">${esc(d.orgName)}</a></td>
       <td class="td-muted" style="font-size:12px">${[...d.managers].join(', ')}</td>
       <td style="font-weight:600;text-align:center">${d.total}</td>
-      <td style="text-align:center">${d.visit}</td>
-      <td style="text-align:center">${d.lunch}</td>
       <td style="text-align:center">${d.dinner}</td>
+      <td style="text-align:center">${d.lunch}</td>
+      <td style="text-align:center">${d.visit}</td>
       <td style="text-align:center">${d.fund}</td>
-      <td style="text-align:center">${d.etc}</td>
       <td style="white-space:nowrap">${d.lastDate || '—'}</td>
     </tr>`).join('');
 }
@@ -1079,8 +1076,8 @@ function renderOrgTable() {
 function exportOrgCSV() {
   const orgs = computeOrgSummary();
   if (!orgs.length) { alert('데이터가 없습니다.'); return; }
-  const header = ['단체명','영업팀장','총활동','방문','중식','석식','펀드','기타','최근활동일'];
-  const rows = orgs.map(d => [d.orgName, [...d.managers].join(', '), d.total, d.visit, d.lunch, d.dinner, d.fund, d.etc, d.lastDate]);
+  const header = ['단체명','영업팀장','총활동','석식','중식','방문','펀드','최근활동일'];
+  const rows = orgs.map(d => [d.orgName, [...d.managers].join(', '), d.total, d.dinner, d.lunch, d.visit, d.fund, d.lastDate]);
   exportCSV(header, rows, `단체별현황_${new Date().toLocaleDateString('sv')}.csv`);
 }
 
