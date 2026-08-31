@@ -649,11 +649,11 @@
           <select id="aa-name"><option value="">팀장 선택</option></select>
           <input type="date" id="aa-date">
           <select id="aa-type">
-            <option value="1일 휴가|4">1일 휴가 (−4점)</option>
-            <option value="오전 반차|2">오전 반차 (−2점)</option>
-            <option value="오후 반차|2">오후 반차 (−2점)</option>
-            <option value="오전 반반차|1">오전 반반차 (−1점)</option>
-            <option value="오후 반반차|1">오후 반반차 (−1점)</option>
+            <option value="1일 휴가|5">1일 휴가 (−5점)</option>
+            <option value="오전 반차|2.5">오전 반차 (−2.5점)</option>
+            <option value="오후 반차|2.5">오후 반차 (−2.5점)</option>
+            <option value="오전 반반차|1.25">오전 반반차 (−1.25점)</option>
+            <option value="오후 반반차|1.25">오후 반반차 (−1.25점)</option>
             <option value="1일 출장|0">1일 출장 (기록만)</option>
             <option value="오전 출장|0">오전 출장 (기록만)</option>
             <option value="오후 출장|0">오후 출장 (기록만)</option>
@@ -675,9 +675,9 @@
           <table class="ref-table">
             <thead><tr><th>유형</th><th>차감</th><th>산출 기준</th></tr></thead>
             <tbody>
-              <tr><td>1일 휴가</td><td style="color:var(--red);font-weight:500">−4점</td><td class="td-muted">4점/일 × 1일</td></tr>
-              <tr><td>오전/오후 반차</td><td style="color:var(--red);font-weight:500">−2점</td><td class="td-muted">4점/일 × 0.5일</td></tr>
-              <tr><td>오전/오후 반반차</td><td style="color:var(--red);font-weight:500">−1점</td><td class="td-muted">4점/일 × 0.25일</td></tr>
+              <tr><td>1일 휴가</td><td style="color:var(--red);font-weight:500">−5점</td><td class="td-muted">5점/일 × 1일</td></tr>
+              <tr><td>오전/오후 반차</td><td style="color:var(--red);font-weight:500">−2.5점</td><td class="td-muted">5점/일 × 0.5일</td></tr>
+              <tr><td>오전/오후 반반차</td><td style="color:var(--red);font-weight:500">−1.25점</td><td class="td-muted">5점/일 × 0.25일</td></tr>
               <tr><td>1일 출장</td><td style="color:var(--blue);font-weight:500">0점</td><td class="td-muted">기록만 (차감 없음)</td></tr>
               <tr><td>오전/오후 출장</td><td style="color:var(--blue);font-weight:500">0점</td><td class="td-muted">기록만 (차감 없음)</td></tr>
             </tbody>
@@ -722,7 +722,7 @@ let currentView = 'overview';
 let chartInst = null;
 let logPage = 1;
 const LOG_PAGE_SIZE = 50;
-const TARGET_BASE = 20;
+const TARGET_BASE = 25;
 
 // ── 기본값 ──
 const DEFAULT_SHEET_ID   = '13BHBgMAko9jNZoPIwOe5EqML8n56RCPl4gHhrIrMU0U';
@@ -1195,7 +1195,7 @@ function useDemoData() {
       const t = m.role === '팀장';
       DEMO.push({ week, org: m.org, name: m.name, role: m.role,
         score:  t ? rnd(10, 28) : null,
-        target: t ? 20 : null,
+        target: t ? 25 : null,
       });
     });
   });
