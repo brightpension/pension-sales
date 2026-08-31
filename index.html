@@ -753,7 +753,7 @@ let viewerLabel  = '';
 let scopeValid   = true;
 
 async function resolveScope() {
-  if (VIEW_KEY === ADMIN_KEY) { viewScope = null; viewerLabel = ''; return; }
+  if (VIEW_KEY === ADMIN_KEY) { viewScope = null; viewerLabel = '김윤덕 사업부장'; return; }
   try {
     const res  = await fetch(SCRIPT_URL + '?action=getScope&key=' + encodeURIComponent(VIEW_KEY) + '&t=' + Date.now());
     const data = await res.json();
