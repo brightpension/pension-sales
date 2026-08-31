@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow, noarchive">
+<title>법인사업부 활동관리 매뉴얼</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@500;700;900&family=Noto+Sans+KR:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --paper: #F5F4F0;
+    --paper-raised: #FFFFFF;
+    --ink: #1A1F2B;
+    --ink-soft: #5C6270;
+    --ink-faint: #90948F;
+    --line: #DEDBD2;
+    --line-strong: #C7C3B6;
+
+    --navy: #1E3A5F;
+    --navy-bg: #E7EDF4;
+    --navy-line: #B9C7D8;
+
+    --amber: #8B5E1F;
+    --amber-bg: #F3EBDD;
+    --amber-line: #DCC8A4;
+
+    --radius: 10px;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper: #17191E;
+      --paper-raised: #1F222A;
+      --ink: #EDEBE4;
+      --ink-soft: #A6A99F;
+      --ink-faint: #6D7076;
+      --line: #33363E;
+      --line-strong: #43464F;
+
+      --navy: #8FB1DA;
+      --navy-bg: #1E2A38;
+      --navy-line: #33465C;
+
+      --amber: #D8AE73;
+      --amber-bg: #2E2618;
+      --amber-line: #4A3B24;
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper: #17191E;
+    --paper-raised: #1F222A;
+    --ink: #EDEBE4;
+    --ink-soft: #A6A99F;
+    --ink-faint: #6D7076;
+    --line: #33363E;
+    --line-strong: #43464F;
+
+    --navy: #8FB1DA;
+    --navy-bg: #1E2A38;
+    --navy-line: #33465C;
+
+    --amber: #D8AE73;
+    --amber-bg: #2E2618;
+    --amber-line: #4A3B24;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: 'Noto Sans KR', -apple-system, sans-serif;
+    line-height: 1.7;
+  }
+  ::selection { background: var(--navy-bg); }
+
+  .wrap { max-width: 760px; margin: 0 auto; padding: 48px 24px 100px; }
+
+  .masthead { margin-bottom: 32px; }
+  .eyebrow {
+    font-size: 12px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase;
+    color: var(--ink-faint); margin-bottom: 10px;
+  }
+  h1 {
+    font-family: 'Noto Serif KR', serif; font-weight: 900;
+    font-size: clamp(26px, 5vw, 34px); margin: 0 0 8px; text-wrap: balance; letter-spacing: -0.01em;
+  }
+  .subtitle { font-size: 14px; color: var(--ink-soft); }
+
+  .switcher {
+    display: flex; gap: 4px; margin: 28px 0 36px;
+    background: var(--paper-raised); border: 1px solid var(--line); border-radius: var(--radius);
+    padding: 4px;
+  }
+  .switch-btn {
+    flex: 1; text-align: center; padding: 11px 14px; border-radius: calc(var(--radius) - 4px);
+    font-family: 'Noto Sans KR', sans-serif; font-weight: 700; font-size: 14px;
+    cursor: pointer; border: none; background: transparent; color: var(--ink-soft);
+    transition: background .15s, color .15s;
+  }
+  .switch-btn .n { font-family: 'Noto Serif KR', serif; font-weight: 700; margin-right: 6px; opacity: .6; }
+  .switch-btn.active.leader { background: var(--amber-bg); color: var(--amber); }
+  .switch-btn.active.admin  { background: var(--navy-bg);  color: var(--navy); }
+
+  .track { display: none; }
+  .track.active { display: block; }
+
+  .step {
+    display: flex; gap: 18px; padding: 26px 0; border-top: 1px solid var(--line);
+  }
+  .step:first-child { border-top: none; padding-top: 8px; }
+
+  .step-num {
+    flex-shrink: 0; width: 40px; height: 40px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Noto Serif KR', serif; font-weight: 700; font-size: 16px;
+  }
+  .leader .step-num { background: var(--amber-bg); color: var(--amber); }
+  .admin  .step-num { background: var(--navy-bg);  color: var(--navy); }
+
+  .step-body { flex: 1; min-width: 0; }
+  .step-title {
+    font-family: 'Noto Serif KR', serif; font-weight: 700; font-size: 18px;
+    margin: 4px 0 8px; text-wrap: balance;
+  }
+  .step p { margin: 0 0 10px; font-size: 14.5px; max-width: 62ch; }
+  .step p:last-child { margin-bottom: 0; }
+  .step ul { margin: 8px 0 10px; padding-left: 20px; font-size: 14px; }
+  .step li { margin-bottom: 5px; }
+  .step li:last-child { margin-bottom: 0; }
+
+  .chip {
+    display: inline-flex; align-items: center; font-family: 'Noto Sans KR', sans-serif;
+    font-weight: 600; font-size: 12.5px; padding: 2px 9px; border-radius: 100px;
+    border: 1px solid var(--line-strong); background: var(--paper-raised); color: var(--ink);
+    white-space: nowrap;
+  }
+
+  .note {
+    margin-top: 12px; padding: 12px 14px; border-radius: var(--radius);
+    font-size: 13px; display: flex; gap: 9px; align-items: flex-start;
+  }
+  .leader .note { background: var(--amber-bg); color: var(--ink); border: 1px solid var(--amber-line); }
+  .admin  .note { background: var(--navy-bg);  color: var(--ink); border: 1px solid var(--navy-line); }
+  .note b { flex-shrink: 0; }
+
+  .scope-table {
+    width: 100%; border-collapse: collapse; margin: 14px 0 4px; font-size: 13.5px;
+  }
+  .scope-table th, .scope-table td {
+    text-align: left; padding: 9px 10px; border-bottom: 1px solid var(--line);
+  }
+  .scope-table th { color: var(--ink-soft); font-weight: 600; font-size: 12px; }
+  .scope-table td:first-child { font-weight: 700; }
+
+  .footline {
+    margin-top: 48px; padding-top: 18px; border-top: 1px solid var(--line);
+    font-size: 12px; color: var(--ink-faint);
+  }
+
+  @media (max-width: 480px) {
+    .wrap { padding: 32px 16px 80px; }
+    .step { gap: 12px; }
+    .step-num { width: 32px; height: 32px; font-size: 14px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="masthead">
+    <div class="eyebrow">Operations Manual · 2026</div>
+    <h1>법인사업부 활동관리 시스템 사용 매뉴얼</h1>
+    <div class="subtitle">받으신 개인 링크로 접속하면 별도 로그인 없이 바로 사용하실 수 있습니다.</div>
+  </div>
+
+  <div class="switcher">
+    <button class="switch-btn leader active" id="btn-leader" onclick="showTrack('leader')"><span class="n">Ⅰ</span>팀장용</button>
+    <button class="switch-btn admin" id="btn-admin" onclick="showTrack('admin')"><span class="n">Ⅱ</span>관리자용</button>
+  </div>
+
+  <!-- ══════════ 팀장용 ══════════ -->
+  <div class="track leader active" id="track-leader">
+
+    <div class="step leader">
+      <div class="step-num">1</div>
+      <div class="step-body">
+        <div class="step-title">접속하기</div>
+        <p>카카오톡·문자로 받은 본인 전용 링크를 누르면 별도 아이디·비밀번호 없이 바로 접속됩니다.</p>
+        <p>상단에 본인 <span class="chip">이름</span> · <span class="chip">소속</span> · <span class="chip">직책</span>이 표시되면 정상 접속된 것입니다.</p>
+      </div>
+    </div>
+
+    <div class="step leader">
+      <div class="step-num">2</div>
+      <div class="step-body">
+        <div class="step-title">활동 기록 입력</div>
+        <p>하단 <span class="chip">활동 기록</span> 탭에서 오늘의 영업활동을 입력합니다.</p>
+        <ul>
+          <li><b>활동일자</b> — 기본값은 오늘. 근태에 '1일 휴가'로 등록된 날짜는 자동으로 입력이 막힙니다.</li>
+          <li><b>단체구분</b> — 신규 / 정산 중 선택</li>
+          <li><b>제도</b> — 여러 개를 동시에 선택할 수 있습니다 (DB · DC · IRP · 미도입 · 토탈마케팅)</li>
+          <li><b>단체명</b> — 직접 입력. 예전에 입력한 단체명은 자동완성으로 뜹니다.</li>
+          <li><b>담당자</b> — 여러 명이면 쉼표로 구분해서 입력</li>
+          <li><b>활동방식</b> — 아래 표의 점수가 그대로 적립됩니다.</li>
+          <li><b>활동 내역</b> — 최대 700자, 입력하는 동안 남은 글자수가 실시간으로 표시됩니다.</li>
+        </ul>
+        <table class="scope-table">
+          <tr><th>활동방식</th><th>점수</th></tr>
+          <tr><td>석식</td><td>+3점</td></tr>
+          <tr><td>중식</td><td>+2점</td></tr>
+          <tr><td>방문</td><td>+1점</td></tr>
+          <tr><td>펀드</td><td>+1점</td></tr>
+        </table>
+        <div class="note"><b>ⓘ</b>주간 기준 점수는 <b>25점</b>입니다 (평일 1일 5점 기준).</div>
+        <p><span class="chip">제출하기</span>를 누르면 등록이 완료됩니다.</p>
+        <div class="note"><b>ⓘ</b>EB사업단은 제도 항목이 IRP · 개인연금 · 단체상해 · 토탈마케팅으로 자동으로 다르게 나타납니다.</div>
+      </div>
+    </div>
+
+    <div class="step leader">
+      <div class="step-num">3</div>
+      <div class="step-body">
+        <div class="step-title">내 기록 확인 · 수정 · 삭제</div>
+        <p>하단 <span class="chip">내 기록</span> 탭에서 주차별로 그동안 입력한 내용을 확인할 수 있습니다.</p>
+        <p>잘못 입력한 기록은 목록에서 눌러 내용을 고친 뒤 저장하거나, 그대로 삭제할 수 있습니다.</p>
+      </div>
+    </div>
+
+    <div class="step leader">
+      <div class="step-num">4</div>
+      <div class="step-body">
+        <div class="step-title">근태 등록</div>
+        <p>하단 <span class="chip">근태</span> 탭에서 휴가·출장을 직접 등록합니다.</p>
+        <ul>
+          <li><b>휴가</b> — 1일 / 오전 반차 / 오후 반차 / 오전 반반차 / 오후 반반차</li>
+          <li><b>출장</b> — 1일 / 오전 / 오후 (점수 차감 없음)</li>
+        </ul>
+        <p>휴가를 등록하면 그 주의 기준 점수(25점)에서 아래 표만큼 자동으로 차감되어 보정목표가 계산됩니다.</p>
+        <table class="scope-table">
+          <tr><th>근태 종류</th><th>차감 점수</th></tr>
+          <tr><td>1일 휴가</td><td>−5점</td></tr>
+          <tr><td>오전 · 오후 반차</td><td>−2.5점</td></tr>
+          <tr><td>오전 · 오후 반반차</td><td>−1.25점</td></tr>
+          <tr><td>출장 (1일 · 오전 · 오후)</td><td>0점 (기록만)</td></tr>
+        </table>
+        <p>등록된 기록은 월 단위로 확인하며, 상단 드롭다운에서 지난 달도 조회할 수 있습니다.</p>
+        <div class="note"><b>ⓘ</b>이미 '1일 휴가'로 등록된 날짜는 그날 활동 기록 입력이 자동으로 차단됩니다.</div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ══════════ 관리자용 ══════════ -->
+  <div class="track admin" id="track-admin">
+
+    <div class="step admin">
+      <div class="step-num">1</div>
+      <div class="step-body">
+        <div class="step-title">접속하기 — 직책별로 보이는 범위가 다릅니다</div>
+        <p>본인 전용 관리자 링크로 접속합니다. 왼쪽 위에 이름과 직책이 표시됩니다.</p>
+        <table class="scope-table">
+          <tr><th>직책</th><th>보이는 범위</th></tr>
+          <tr><td>사업부장</td><td>전체</td></tr>
+          <tr><td>1RM</td><td>1사업단 · 2사업단 · 중부사업단</td></tr>
+          <tr><td>2RM</td><td>3사업단 · 4사업단 · 영남사업단 · EB사업단</td></tr>
+          <tr><td>단장</td><td>본인 사업단만</td></tr>
+        </table>
+        <div class="note"><b>ⓘ</b>근태 현황만은 직책과 무관하게 항상 전체 팀장 기준으로 보입니다.</div>
+      </div>
+    </div>
+
+    <div class="step admin">
+      <div class="step-num">2</div>
+      <div class="step-body">
+        <div class="step-title">요약 · 팀장 현황</div>
+        <p><span class="chip">요약</span>에서 전체 인원 · 달성자 · 미달자 · 평균 달성률을 한눈에 확인하고, 팀장별 주간 점수 그래프와 사업단별 달성 현황을 볼 수 있습니다.</p>
+        <p><span class="chip">팀장 현황</span>에서는 팀장별 상세 실적을 표로 보고, 전체 / 달성자 / 미달자로 걸러서 CSV로 내려받을 수 있습니다.</p>
+      </div>
+    </div>
+
+    <div class="step admin">
+      <div class="step-num">3</div>
+      <div class="step-body">
+        <div class="step-title">활동일지 — 연동 필터</div>
+        <p>주차 · 사업단 · 팀장 · 방식으로 필터링하고, 검색창으로 단체명이나 내용도 바로 찾을 수 있습니다.</p>
+        <ul>
+          <li>표에서 <b>팀장 이름을 클릭</b>하면 그 사람 기록만 자동으로 필터링됩니다.</li>
+          <li><b>사업단을 먼저 고르면</b> 팀장 목록도 그 사업단 소속으로 자동으로 좁혀지고, 반대로 팀장을 먼저 골라도 사업단이 자동으로 맞춰집니다.</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="step admin">
+      <div class="step-num">4</div>
+      <div class="step-body">
+        <div class="step-title">단체 현황 — 이력 조회</div>
+        <p>단체별 누적 실적(총활동 건수, 석식 · 중식 · 방문 · 펀드 방식별 건수)을 확인합니다.</p>
+        <p><b>단체명을 클릭</b>하면 그 단체만의 전용 페이지로 이동해 다음을 볼 수 있습니다.</p>
+        <ul>
+          <li>활동이 있었던 날짜가 표시되는 <b>캘린더</b></li>
+          <li>시작일 ~ 종료일을 입력하는 <b>기간 조회</b></li>
+          <li>날짜순으로 정리된 <b>전체 활동 이력</b></li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="step admin">
+      <div class="step-num">5</div>
+      <div class="step-body">
+        <div class="step-title">근태 관리</div>
+        <p>팀장이 직접 등록한 것과 별개로, 관리자가 팀장을 대신해 근태를 등록·삭제할 수 있습니다.</p>
+        <p>팀장 선택 → 날짜 → 유형 선택 후 <span class="chip">등록</span>을 누르면 됩니다. 이 화면은 직책과 무관하게 항상 전체 팀장을 대상으로 합니다.</p>
+        <p>주간 기준 점수는 25점이며, 등록한 근태에 따라 아래 표만큼 자동으로 차감됩니다.</p>
+        <table class="scope-table">
+          <tr><th>근태 종류</th><th>차감 점수</th></tr>
+          <tr><td>1일 휴가</td><td>−5점</td></tr>
+          <tr><td>오전 · 오후 반차</td><td>−2.5점</td></tr>
+          <tr><td>오전 · 오후 반반차</td><td>−1.25점</td></tr>
+          <tr><td>출장 (1일 · 오전 · 오후)</td><td>0점 (기록만)</td></tr>
+        </table>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="footline">법인사업부 영업활동 관리 시스템 · 문의사항은 담당자에게 연락 주세요.</div>
+</div>
+
+<script>
+function showTrack(name) {
+  document.getElementById('track-leader').classList.toggle('active', name === 'leader');
+  document.getElementById('track-admin').classList.toggle('active', name === 'admin');
+  document.getElementById('btn-leader').classList.toggle('active', name === 'leader');
+  document.getElementById('btn-admin').classList.toggle('active', name === 'admin');
+}
+// 링크에 ?view=leader 또는 ?view=admin 이 붙어 있으면 해당 화면으로 바로 열기
+const initialView = new URLSearchParams(location.search).get('view');
+if (initialView === 'admin') showTrack('admin');
+</script>
+</body>
+</html>
