@@ -330,11 +330,11 @@
     <div class="section">
       <div class="att-group-label">🏖 휴가</div>
       <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:8px">
-        <button class="btn-select" data-att="1일 휴가"    data-deduct="4" data-group="vac" onclick="selectAttType(this)">1일 휴가<span class="btn-sub">−4점</span></button>
-        <button class="btn-select" data-att="오전 반차"   data-deduct="2" data-group="vac" onclick="selectAttType(this)">오전 반차<span class="btn-sub">−2점</span></button>
-        <button class="btn-select" data-att="오후 반차"   data-deduct="2" data-group="vac" onclick="selectAttType(this)">오후 반차<span class="btn-sub">−2점</span></button>
-        <button class="btn-select" data-att="오전 반반차" data-deduct="1" data-group="vac" onclick="selectAttType(this)" style="grid-column:1/span 1; justify-self:stretch">오전 반반차<span class="btn-sub">−1점</span></button>
-        <button class="btn-select" data-att="오후 반반차" data-deduct="1" data-group="vac" onclick="selectAttType(this)" style="grid-column:2/span 1; justify-self:stretch">오후 반반차<span class="btn-sub">−1점</span></button>
+        <button class="btn-select" data-att="1일 휴가"    data-deduct="5" data-group="vac" onclick="selectAttType(this)">1일 휴가<span class="btn-sub">−5점</span></button>
+        <button class="btn-select" data-att="오전 반차"   data-deduct="2.5" data-group="vac" onclick="selectAttType(this)">오전 반차<span class="btn-sub">−2.5점</span></button>
+        <button class="btn-select" data-att="오후 반차"   data-deduct="2.5" data-group="vac" onclick="selectAttType(this)">오후 반차<span class="btn-sub">−2.5점</span></button>
+        <button class="btn-select" data-att="오전 반반차" data-deduct="1.25" data-group="vac" onclick="selectAttType(this)" style="grid-column:1/span 1; justify-self:stretch">오전 반반차<span class="btn-sub">−1.25점</span></button>
+        <button class="btn-select" data-att="오후 반반차" data-deduct="1.25" data-group="vac" onclick="selectAttType(this)" style="grid-column:2/span 1; justify-self:stretch">오후 반반차<span class="btn-sub">−1.25점</span></button>
       </div>
     </div>
     <div class="section">
@@ -401,6 +401,7 @@ function esc(s) {
 function todayStr() { return new Date().toLocaleDateString('sv'); }
 document.getElementById('act-date').value = todayStr();
 document.getElementById('att-date').value = todayStr();
+let dateBlocked = false;
 checkDateBlock();
 
 // ── 제도 옵션 (EB사업단은 취급 상품이 달라 별도 목록) ──
@@ -485,7 +486,6 @@ function checkReady() {
 }
 
 // ── 휴가일 활동 입력 차단 (1일 휴가로 등록된 날짜는 활동 등록 불가) ──
-let dateBlocked = false;
 async function checkDateBlock() {
   const dateStr = document.getElementById('act-date').value;
   const banner  = document.getElementById('vacation-block-banner');
@@ -785,7 +785,7 @@ async function loadRecords() {
     let total = 0;
     myRows.forEach(r => { total += r.score || 0; });
 
-    const TARGET_BASE = 20;
+    const TARGET_BASE = 25;
     const effTarget = Math.max(0, TARGET_BASE - deduct);
     const pct = effTarget > 0 ? Math.min(100, Math.round(total / effTarget * 100)) : 100;
     const reached = total >= effTarget;
