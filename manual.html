@@ -335,9 +335,13 @@ function showTrack(name) {
   document.getElementById('btn-leader').classList.toggle('active', name === 'leader');
   document.getElementById('btn-admin').classList.toggle('active', name === 'admin');
 }
-// 링크에 ?view=leader 또는 ?view=admin 이 붙어 있으면 해당 화면으로 바로 열기
+// 링크에 ?view=leader 또는 ?view=admin 이 붙어 있으면 해당 화면만 보여주고, 다른 화면으로는 전환할 수 없게 막기
 const initialView = new URLSearchParams(location.search).get('view');
-if (initialView === 'admin') showTrack('admin');
+if (initialView === 'leader' || initialView === 'admin') {
+  showTrack(initialView);
+  document.querySelector('.switcher').remove();
+  document.getElementById(initialView === 'leader' ? 'track-admin' : 'track-leader').remove();
+}
 </script>
 </body>
 </html>
