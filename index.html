@@ -201,9 +201,6 @@
   .badge-ok { background: var(--green-bg); color: var(--green); }
   .badge-fail { background: var(--red-bg); color: var(--red); }
   .badge-adj { background: var(--amber-bg); color: var(--amber); font-size: 10px; padding: 1px 6px; margin-left: 4px; }
-  .badge-p0 { background: var(--blue-bg); color: var(--blue); }
-  .badge-p1 { background: var(--green-bg); color: var(--green); }
-  .badge-p2 { background: var(--amber-bg); color: var(--amber); }
   .badge-method { background: #f3f0ff; color: #5b21b6; }
 
   /* ── 프로그레스 ── */
@@ -560,7 +557,6 @@
               <tr>
                 <th>이름</th><th>소속</th>
                 <th>점수</th><th>달성률</th>
-                <th>신규발굴</th><th>펀드상담</th><th>단체관리</th>
                 <th>달성</th>
               </tr>
             </thead>
@@ -584,17 +580,12 @@
           <select id="lf-week" onchange="applyLogFilter()"><option value="">주차</option></select>
           <select id="lf-org" onchange="onLogOrgChange()"><option value="">사업단</option></select>
           <select id="lf-name" onchange="onLogNameChange()"><option value="">팀장</option></select>
-          <select id="lf-purpose" onchange="applyLogFilter()">
-            <option value="">목적</option>
-            <option value="신규발굴">신규발굴</option>
-            <option value="펀드상담">펀드상담</option>
-            <option value="단체관리">단체관리</option>
-          </select>
           <select id="lf-method" onchange="applyLogFilter()">
             <option value="">방식</option>
             <option value="방문">방문</option>
             <option value="중식">중식</option>
             <option value="석식">석식</option>
+            <option value="펀드">펀드</option>
             <option value="기타">기타</option>
           </select>
           <input type="text" id="lf-search" placeholder="🔍 단체명 / 제도 / 내용" oninput="applyLogFilter()">
@@ -607,7 +598,7 @@
             <thead>
               <tr>
                 <th style="width:70px">주차</th><th style="width:76px">날짜</th><th>소속</th><th>이름</th>
-                <th>단체구분</th><th>제도</th><th>단체명</th><th>담당자</th><th>활동목적</th><th>방식</th>
+                <th>단체구분</th><th>제도</th><th>단체명</th><th>담당자</th><th>방식</th>
                 <th>내용</th>
               </tr>
             </thead>
@@ -637,8 +628,8 @@
           <table>
             <thead>
               <tr>
-                <th>단체명</th><th>영업팀장</th><th>총활동</th><th>신규발굴</th><th>펀드상담</th><th>단체관리</th>
-                <th>방문</th><th>중식</th><th>석식</th><th>기타</th>
+                <th>단체명</th><th>영업팀장</th><th>총활동</th>
+                <th>방문</th><th>중식</th><th>석식</th><th>펀드</th><th>기타</th>
                 <th>최근활동일</th>
               </tr>
             </thead>
@@ -905,9 +896,6 @@ function buildWeeklySummary(activities, roster, weekList) {
         week, org: member.org, name: member.name, role: member.role,
         score:  acts.reduce((s, a) => s + a.score, 0),
         target: TARGET_BASE,
-        new_:   acts.filter(a => a.purpose === '신규발굴').length,
-        fund:   acts.filter(a => a.purpose === '펀드상담').length,
-        mgmt:   acts.filter(a => a.purpose === '단체관리').length,
       });
     });
   });
@@ -957,14 +945,12 @@ function applyLogFilter() {
   const week    = document.getElementById('lf-week').value;
   const org     = document.getElementById('lf-org').value;
   const name    = document.getElementById('lf-name').value;
-  const purpose = document.getElementById('lf-purpose').value;
   const method  = document.getElementById('lf-method').value;
   const search  = (document.getElementById('lf-search').value || '').toLowerCase().trim();
   filteredLog = allLogData.filter(r => {
     if (week    && r.week    !== week)    return false;
     if (org     && r.org     !== org)     return false;
     if (name    && r.name    !== name)    return false;
-    if (purpose && r.purpose !== purpose) return false;
     if (method  && r.method  !== method)  return false;
     if (search) {
       const hay = `${r.orgName} ${r.scheme} ${r.content}`.toLowerCase();
@@ -978,7 +964,7 @@ function applyLogFilter() {
 }
 
 function clearLogFilter() {
-  ['lf-week', 'lf-org', 'lf-name', 'lf-purpose', 'lf-method'].forEach(id => document.getElementById(id).value = '');
+  ['lf-week', 'lf-org', 'lf-name', 'lf-method'].forEach(id => document.getElementById(id).value = '');
   document.getElementById('lf-search').value = '';
   narrowNameOptionsByOrg('');
   applyLogFilter();
@@ -1016,14 +1002,12 @@ function filterByName(name) {
 }
 
 // ── 로그 테이블 ──
-const PBMAP = { 신규발굴: 'badge-p0', 펀드상담: 'badge-p1', 단체관리: 'badge-p2' };
-
 function renderLogTable() {
   const start = (logPage - 1) * LOG_PAGE_SIZE;
   const page  = filteredLog.slice(start, start + LOG_PAGE_SIZE);
   const tbody = document.getElementById('log-table');
   if (!page.length) {
-    tbody.innerHTML = `<tr><td colspan="11"><div class="empty-state"><div class="empty-state-icon">📭</div><div class="empty-state-text">데이터가 없습니다</div></div></td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="10"><div class="empty-state"><div class="empty-state-icon">📭</div><div class="empty-state-text">데이터가 없습니다</div></div></td></tr>`;
     return;
   }
   tbody.innerHTML = page.map(r => `
@@ -1036,7 +1020,6 @@ function renderLogTable() {
       <td>${r.scheme   ? `<span class="badge badge-method">${esc(r.scheme)}</span>`   : '—'}</td>
       <td style="white-space:nowrap;max-width:60px;overflow:hidden;text-overflow:ellipsis" title="${esc(r.orgName)}">${r.orgName ? esc(r.orgName).slice(0,5) + (r.orgName.length > 5 ? '…' : '') : '—'}</td>
       <td class="td-muted" style="white-space:nowrap;max-width:70px;overflow:hidden;text-overflow:ellipsis" title="${esc(r.contact)}">${r.contact ? esc(r.contact) : '—'}</td>
-      <td><span class="badge ${PBMAP[r.purpose] || ''}">${r.purpose || '—'}</span></td>
       <td><span class="badge badge-method">${r.method || '—'}</span></td>
       <td class="td-content" title="${esc(r.content)}" onclick="showContentModal(this.title, '${esc(r.name)}', '${esc(r.actDate)}')">${esc(r.content) || '—'}</td>
     </tr>`).join('');
@@ -1054,18 +1037,16 @@ function computeOrgSummary() {
     if (orgFilter  && a.orgName !== orgFilter)  return;
     if (nameFilter && a.name    !== nameFilter) return;
     if (!map[a.orgName]) map[a.orgName] = {
-      orgName: a.orgName, total: 0, new_: 0, fund: 0, mgmt: 0,
-      visit: 0, lunch: 0, dinner: 0, etc: 0,
+      orgName: a.orgName, total: 0,
+      visit: 0, lunch: 0, dinner: 0, fund: 0, etc: 0,
       managers: new Set(), lastDate: ''
     };
     const d = map[a.orgName];
     d.total++;
-    if (a.purpose === '신규발굴')      d.new_++;
-    else if (a.purpose === '펀드상담') d.fund++;
-    else if (a.purpose === '단체관리') d.mgmt++;
     if (a.method === '방문')      d.visit++;
     else if (a.method === '중식') d.lunch++;
     else if (a.method === '석식') d.dinner++;
+    else if (a.method === '펀드') d.fund++;
     else if (a.method === '기타') d.etc++;
     if (a.name) d.managers.add(a.name);
     if (a.actDate > d.lastDate) d.lastDate = a.actDate;
@@ -1078,7 +1059,7 @@ function renderOrgTable() {
   if (!tbody) return;
   const orgs = computeOrgSummary();
   if (!orgs.length) {
-    tbody.innerHTML = `<tr><td colspan="11" style="text-align:center;padding:28px;color:var(--text3)">단체 활동 데이터 없음</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;padding:28px;color:var(--text3)">단체 활동 데이터 없음</td></tr>`;
     return;
   }
   tbody.innerHTML = orgs.map(d => `
@@ -1086,12 +1067,10 @@ function renderOrgTable() {
       <td class="td-name"><a href="org_detail.html?org=${encodeURIComponent(d.orgName)}&admin=${encodeURIComponent(VIEW_KEY)}" style="color:inherit;text-decoration:underline;text-decoration-style:dotted">${esc(d.orgName)}</a></td>
       <td class="td-muted" style="font-size:12px">${[...d.managers].join(', ')}</td>
       <td style="font-weight:600;text-align:center">${d.total}</td>
-      <td style="text-align:center;color:var(--blue)">${d.new_}</td>
-      <td style="text-align:center;color:var(--green)">${d.fund}</td>
-      <td style="text-align:center;color:var(--amber)">${d.mgmt}</td>
       <td style="text-align:center">${d.visit}</td>
       <td style="text-align:center">${d.lunch}</td>
       <td style="text-align:center">${d.dinner}</td>
+      <td style="text-align:center">${d.fund}</td>
       <td style="text-align:center">${d.etc}</td>
       <td style="white-space:nowrap">${d.lastDate || '—'}</td>
     </tr>`).join('');
@@ -1100,8 +1079,8 @@ function renderOrgTable() {
 function exportOrgCSV() {
   const orgs = computeOrgSummary();
   if (!orgs.length) { alert('데이터가 없습니다.'); return; }
-  const header = ['단체명','영업팀장','총활동','신규발굴','펀드상담','단체관리','방문','중식','석식','기타','최근활동일'];
-  const rows = orgs.map(d => [d.orgName, [...d.managers].join(', '), d.total, d.new_, d.fund, d.mgmt, d.visit, d.lunch, d.dinner, d.etc, d.lastDate]);
+  const header = ['단체명','영업팀장','총활동','방문','중식','석식','펀드','기타','최근활동일'];
+  const rows = orgs.map(d => [d.orgName, [...d.managers].join(', '), d.total, d.visit, d.lunch, d.dinner, d.fund, d.etc, d.lastDate]);
   exportCSV(header, rows, `단체별현황_${new Date().toLocaleDateString('sv')}.csv`);
 }
 
@@ -1144,8 +1123,8 @@ function exportCSV(header, rows, filename) {
 
 function exportLogCSV() {
   if (!filteredLog.length) { alert('다운로드할 데이터가 없습니다.'); return; }
-  const header = ['주차','날짜','소속','이름','단체구분','제도','단체명','담당자','활동목적','활동방식','내용','점수'];
-  const rows = filteredLog.map(r => [weekStrToLabel(r.week), r.actDate, r.org, r.name, r.category, r.scheme, r.orgName, r.contact, r.purpose, r.method, r.content, r.score]);
+  const header = ['주차','날짜','소속','이름','단체구분','제도','단체명','담당자','활동방식','내용','점수'];
+  const rows = filteredLog.map(r => [weekStrToLabel(r.week), r.actDate, r.org, r.name, r.category, r.scheme, r.orgName, r.contact, r.method, r.content, r.score]);
   exportCSV(header, rows, `활동일지_${new Date().toLocaleDateString('sv')}.csv`);
 }
 
@@ -1156,9 +1135,9 @@ function exportTableCSV() {
     currentDetailTab === 'all' ? true : currentDetailTab === 'pass' ? d.pass : !d.pass
   );
   if (!filtered.length) { alert('다운로드할 데이터가 없습니다.'); return; }
-  const header = ['이름', '소속', '점수', '목표', '달성률(%)', '신규발굴', '펀드상담', '단체관리', '달성여부'];
+  const header = ['이름', '소속', '점수', '목표', '달성률(%)', '달성여부'];
   const nz = (v, fallback) => (v === null || v === undefined) ? fallback : v;
-  const rows = filtered.map(d => [d.name, d.org, d.score, nz(d.effectiveTarget, '—'), nz(d.rate, '—'), nz(d.new_, '—'), nz(d.fund, '—'), nz(d.mgmt, '—'), d.pass ? '달성' : d.pass === null ? '—' : '미달']);
+  const rows = filtered.map(d => [d.name, d.org, d.score, nz(d.effectiveTarget, '—'), nz(d.rate, '—'), d.pass ? '달성' : d.pass === null ? '—' : '미달']);
   exportCSV(header, rows, `주간현황_${getCurrentWeek()}_${new Date().toLocaleDateString('sv')}.csv`);
 }
 
@@ -1220,9 +1199,6 @@ function useDemoData() {
       DEMO.push({ week, org: m.org, name: m.name, role: m.role,
         score:  t ? rnd(10, 28) : null,
         target: t ? 20 : null,
-        new_:   t ? rnd(1, 5) : null,
-        fund:   t ? rnd(1, 4) : null,
-        mgmt:   t ? rnd(1, 6) : null,
       });
     });
   });
@@ -1496,7 +1472,7 @@ function renderMainTable(data) {
     currentDetailTab === 'all' ? true : currentDetailTab === 'pass' ? d.pass : !d.pass
   );
   document.getElementById('main-table').innerHTML = filtered.length === 0
-    ? `<tr><td colspan="8" style="text-align:center;padding:24px;color:var(--text3)">해당 데이터 없음</td></tr>`
+    ? `<tr><td colspan="5" style="text-align:center;padding:24px;color:var(--text3)">해당 데이터 없음</td></tr>`
     : filtered.map(d => {
         const t = d.role === '팀장';
         const key = d.name + '_' + week;
@@ -1505,9 +1481,6 @@ function renderMainTable(data) {
           <td class="td-muted" style="white-space:nowrap;overflow:hidden;max-width:90px;text-overflow:ellipsis">${d.org}</td>
           <td>${t ? `<span style="font-weight:500">${d.score}점</span>` : '<span style="color:var(--text3)">—</span>'}</td>
           <td>${t ? `<div style="font-size:11px;color:var(--text3);margin-bottom:2px">목표 ${d.effectiveTarget}점${d.deduct > 0 ? `<span class="badge badge-adj">−${d.deduct}</span>` : ''}</div><div class="rate-cell"><div class="progress-bar" style="flex:1"><div class="progress-fill ${d.pass ? 'fill-ok' : 'fill-fail'}" style="width:${Math.min(d.rate, 100)}%"></div></div><span class="rate-num">${d.rate}%</span></div>` : '<span style="color:var(--text3)">—</span>'}</td>
-          <td style="text-align:center">${t ? d.new_ : '—'}</td>
-          <td style="text-align:center">${t ? d.fund : '—'}</td>
-          <td style="text-align:center">${t ? d.mgmt : '—'}</td>
           <td>${t ? `<span class="badge ${d.pass ? 'badge-ok' : 'badge-fail'}">${d.pass ? '달성' : '미달'}</span>` : '<span style="color:var(--text3)">—</span>'}</td>
         </tr>`;
       }).join('');
