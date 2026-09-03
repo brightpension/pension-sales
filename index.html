@@ -369,7 +369,10 @@
       margin-left: 0;
       padding: 14px 12px;
       padding-bottom: 72px;
+      min-width: 0;
     }
+    /* 근태: 카드 최소폭(260px)이 화면보다 넓어서 페이지 전체가 옆으로 밀리던 문제 수정 */
+    .att-org-cards { grid-template-columns: 1fr !important; }
 
     .page-header { margin-bottom: 14px; }
     .page-title { font-size: 15px; }
